@@ -1,4 +1,4 @@
-# AI Recipe App
+# SnapChef AI 
 
 Expo project is in [`ai-recipe-app/`](./ai-recipe-app/) because the parent folder name contains spaces (Expo requires URL-safe names).
 
