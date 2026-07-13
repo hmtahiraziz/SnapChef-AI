@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fix React Native Web Pressable background reset bug in Tailwind base style */
+.start-cook-btn-active {
+  background-color: #8966FA !important;
+}
+.add-missing-btn-active {
+  background-color: #EEEDFE !important;
+}
+
+/* Dark mode support for web active buttons */
+.dark .start-cook-btn-active {
+  background-color: #A78BFA !important;
+}
+.dark .add-missing-btn-active {
+  background-color: #2A2438 !important;
+}

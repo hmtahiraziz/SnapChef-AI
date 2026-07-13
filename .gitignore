@@ -1,0 +1,14 @@
+# Python virtual environments
+.venv/
+backend/.venv/
+backend/.venv312/
+
+# Python compiled files / cache
+__pycache__/
+*.pyc
+
+# Environment files
+backend/.env
+
+# Editor settings
+.vscode/

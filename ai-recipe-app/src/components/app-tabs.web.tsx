@@ -1,0 +1,10 @@
+import { View } from 'react-native';
+import { ThemedText } from './themed-text';
+
+export default function AppTabs() {
+  return (
+    <View>
+      <ThemedText>Web Tabs Placeholder</ThemedText>
+    </View>
+  );
+}

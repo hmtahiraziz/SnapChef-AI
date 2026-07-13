@@ -1,0 +1,2 @@
+"""AI Recipe backend package."""
+
