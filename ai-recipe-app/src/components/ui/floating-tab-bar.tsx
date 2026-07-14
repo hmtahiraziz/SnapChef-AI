@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, Text, Platform, Modal } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Pressable,
+  StyleSheet,
+  Text,
+  Platform,
+  Modal,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -14,7 +22,6 @@ import Animated, {
 
 import { useTheme } from '@/hooks/use-theme';
 
-// Reordered items to: Home, Favorites, Spark (AI Scan), Shopping, Settings
 const ITEMS = [
   { key: 'home', routeName: 'index', type: 'route', label: 'Home' },
   { key: 'favorites', routeName: 'favorites', type: 'route', label: 'Favorites' },
@@ -23,16 +30,88 @@ const ITEMS = [
   { key: 'settings', routeName: 'settings', type: 'route', label: 'Settings' },
 ] as const;
 
+type TabMetrics = {
+  isCompact: boolean;
+  horizontalPad: number;
+  bottomPad: number;
+  pillMinHeight: number;
+  pillPadH: number;
+  rowPadV: number;
+  iconSize: number;
+  iconHit: number;
+  itemMinHeight: number;
+  centerWrap: number;
+  centerBtn: number;
+  centerIcon: number;
+  centerLift: number;
+  menuPad: number;
+  menuIcon: number;
+  menuGap: number;
+  menuBtnWidth: number;
+  menuTitleSize: number;
+  /** Space reserved above the home-indicator / tab bar for the scan sheet. */
+  scanSheetBottomInset: number;
+};
+
+function buildTabMetrics(
+  width: number,
+  height: number,
+  safeBottom: number,
+  safeHorizontal: number,
+): TabMetrics {
+  const isCompact = width < 380;
+  const isTiny = width < 340;
+  const isShort = height < 700;
+
+  const bottomPad = Math.max(safeBottom, isCompact ? 8 : 12);
+  const horizontalPad = Math.max(safeHorizontal, isTiny ? 10 : isCompact ? 12 : 16);
+
+  const pillMinHeight = isTiny ? 58 : isCompact ? 62 : isShort ? 66 : 70;
+  const centerWrap = isTiny ? 54 : isCompact ? 58 : 68;
+  const centerBtn = isTiny ? 46 : isCompact ? 50 : 58;
+  const centerLift = isTiny ? -8 : isCompact ? -10 : -12;
+  const pillPadH = isTiny ? 2 : isCompact ? 4 : 6;
+  const rowPadV = isCompact ? 4 : 6;
+
+  // Pill body + protruding center + gap so sheet sits cleanly above the bar.
+  const scanSheetBottomInset =
+    bottomPad + pillMinHeight + Math.abs(centerLift) + (isCompact ? 10 : 14);
+
+  return {
+    isCompact,
+    horizontalPad,
+    bottomPad,
+    pillMinHeight,
+    pillPadH,
+    rowPadV,
+    iconSize: isTiny ? 20 : isCompact ? 22 : 25,
+    iconHit: isTiny ? 40 : isCompact ? 44 : 48,
+    itemMinHeight: isTiny ? 44 : isCompact ? 48 : 52,
+    centerWrap,
+    centerBtn,
+    centerIcon: isTiny ? 20 : isCompact ? 21 : 24,
+    centerLift,
+    menuPad: isCompact ? 18 : 24,
+    menuIcon: isCompact ? 56 : 64,
+    menuGap: isCompact ? 20 : 32,
+    menuBtnWidth: isCompact ? 88 : 100,
+    menuTitleSize: isCompact ? 17 : 19,
+    scanSheetBottomInset,
+  };
+}
+
 function TabItem({
   item,
   focused,
   badge,
   onPress,
+  metrics,
 }: {
-  item: typeof ITEMS[number];
+  item: (typeof ITEMS)[number];
   focused: boolean;
   badge?: string | number;
   onPress: () => void;
+  metrics: TabMetrics;
 }) {
   const scale = useSharedValue(1);
   const theme = useTheme();
@@ -67,41 +146,71 @@ function TabItem({
           scale.value = withSpring(1.0, { damping: 8, stiffness: 180 });
         }
       }}
-      style={isCenter ? styles.centerBtnWrap : styles.itemWrap}
+      style={
+        isCenter
+          ? [
+              styles.centerBtnWrap,
+              {
+                width: metrics.centerWrap,
+                height: metrics.centerWrap,
+                top: metrics.centerLift,
+              },
+            ]
+          : [styles.itemWrap, { minHeight: metrics.itemMinHeight }]
+      }
       accessibilityRole="button"
       accessibilityState={focused ? { selected: true } : {}}
       accessibilityLabel={item.label}
     >
-      <Animated.View style={[isCenter ? [styles.centerBtn, { backgroundColor: centerBgColor, borderColor: theme.border }] : styles.iconContainer, animatedStyle]}>
+      <Animated.View
+        style={[
+          isCenter
+            ? [
+                styles.centerBtn,
+                {
+                  width: metrics.centerBtn,
+                  height: metrics.centerBtn,
+                  borderRadius: metrics.centerBtn / 2,
+                  backgroundColor: centerBgColor,
+                  borderColor: theme.border,
+                },
+              ]
+            : [
+                styles.iconContainer,
+                { width: metrics.iconHit, height: metrics.iconHit },
+              ],
+          animatedStyle,
+        ]}
+      >
         {isCenter ? (
-          <Ionicons name="sparkles" size={24} color="#8966FA" />
+          <Ionicons name="sparkles" size={metrics.centerIcon} color="#8966FA" />
         ) : (
           <View style={styles.normalIconWrap}>
             {item.key === 'home' && (
               <MaterialCommunityIcons
                 name="chef-hat"
-                size={25}
+                size={metrics.iconSize}
                 color={focused ? activeIconColor : inactiveIconColor}
               />
             )}
             {item.key === 'favorites' && (
               <MaterialCommunityIcons
                 name={focused ? 'book-open' : 'book-open-outline'}
-                size={25}
+                size={metrics.iconSize}
                 color={focused ? activeIconColor : inactiveIconColor}
               />
             )}
             {item.key === 'shopping' && (
               <MaterialCommunityIcons
                 name={focused ? 'clipboard-text' : 'clipboard-text-outline'}
-                size={25}
+                size={metrics.iconSize}
                 color={focused ? activeIconColor : inactiveIconColor}
               />
             )}
             {item.key === 'settings' && (
               <MaterialCommunityIcons
-                name={focused ? 'calendar-check' : 'calendar-check-outline'}
-                size={25}
+                name={focused ? 'cog' : 'cog-outline'}
+                size={metrics.iconSize}
                 color={focused ? activeIconColor : inactiveIconColor}
               />
             )}
@@ -114,7 +223,9 @@ function TabItem({
               </View>
             ) : null}
 
-            {focused && <View style={[styles.activeDot, { backgroundColor: theme.tint }]} />}
+            {focused ? (
+              <View style={[styles.activeDot, { backgroundColor: theme.tint }]} />
+            ) : null}
           </View>
         )}
       </Animated.View>
@@ -124,9 +235,21 @@ function TabItem({
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const [showScanMenu, setShowScanMenu] = useState(false);
   const theme = useTheme();
   const isDark = theme.text === '#F5F2FF';
+
+  const metrics = useMemo(
+    () =>
+      buildTabMetrics(
+        width,
+        height,
+        insets.bottom,
+        Math.max(insets.left, insets.right),
+      ),
+    [width, height, insets.bottom, insets.left, insets.right],
+  );
 
   const tabColors = isDark
     ? (['rgba(28, 24, 38, 0.95)', 'rgba(20, 16, 26, 0.92)'] as const)
@@ -137,22 +260,47 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
+      style={[
+        styles.wrap,
+        {
+          paddingBottom: metrics.bottomPad,
+          paddingHorizontal: metrics.horizontalPad,
+        },
+      ]}
     >
-      {/* Liquid Glass choice dialog */}
       <Modal
         visible={showScanMenu}
-        transparent={true}
+        transparent
         animationType="fade"
         onRequestClose={() => setShowScanMenu(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowScanMenu(false)}>
-          <View style={[styles.menuCard, { backgroundColor: isDark ? '#1C1826' : 'rgba(255, 255, 255, 0.98)', borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.85)' }]}>
+        <Pressable
+          style={[styles.modalOverlay, { paddingBottom: metrics.scanSheetBottomInset }]}
+          onPress={() => setShowScanMenu(false)}
+        >
+          <Pressable
+            onPress={() => {
+              /* Absorb presses so the overlay dismiss handler does not fire. */
+            }}
+            style={[
+              styles.menuCard,
+              {
+                backgroundColor: isDark ? '#1C1826' : 'rgba(255, 255, 255, 0.98)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.85)',
+                padding: metrics.menuPad,
+                width: metrics.isCompact ? '94%' : '90%',
+              },
+            ]}
+          >
             <View style={[styles.dragIndicator, { backgroundColor: theme.border }]} />
-            <Text style={[styles.menuTitle, { color: theme.text }]}>Analyze Ingredients</Text>
-            <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>Choose photo source to scan ingredients with AI</Text>
-            
-            <View style={styles.menuRow}>
+            <Text style={[styles.menuTitle, { color: theme.text, fontSize: metrics.menuTitleSize }]}>
+              Analyze Ingredients
+            </Text>
+            <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
+              Choose photo source to scan ingredients with AI
+            </Text>
+
+            <View style={[styles.menuRow, { gap: metrics.menuGap }]}>
               <Pressable
                 onPress={() => {
                   setShowScanMenu(false);
@@ -161,10 +309,24 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                     params: { openCamera: 'true', time: Date.now().toString() },
                   });
                 }}
-                style={({ pressed }) => [styles.menuBtn, pressed && styles.menuBtnPressed]}
+                style={({ pressed }) => [
+                  styles.menuBtn,
+                  { width: metrics.menuBtnWidth },
+                  pressed && styles.menuBtnPressed,
+                ]}
               >
-                <View style={[styles.menuIconCircle, { backgroundColor: '#8966FA' }]}>
-                  <Ionicons name="camera" size={26} color="#fff" />
+                <View
+                  style={[
+                    styles.menuIconCircle,
+                    {
+                      backgroundColor: '#8966FA',
+                      width: metrics.menuIcon,
+                      height: metrics.menuIcon,
+                      borderRadius: metrics.menuIcon / 2,
+                    },
+                  ]}
+                >
+                  <Ionicons name="camera" size={metrics.isCompact ? 22 : 26} color="#fff" />
                 </View>
                 <Text style={[styles.menuBtnText, { color: theme.text }]}>Take Photo</Text>
               </Pressable>
@@ -177,19 +339,36 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                     params: { openGallery: 'true', time: Date.now().toString() },
                   });
                 }}
-                style={({ pressed }) => [styles.menuBtn, pressed && styles.menuBtnPressed]}
+                style={({ pressed }) => [
+                  styles.menuBtn,
+                  { width: metrics.menuBtnWidth },
+                  pressed && styles.menuBtnPressed,
+                ]}
               >
-                <View style={[styles.menuIconCircle, { backgroundColor: '#34D399' }]}>
-                  <Ionicons name="image" size={26} color="#fff" />
+                <View
+                  style={[
+                    styles.menuIconCircle,
+                    {
+                      backgroundColor: '#34D399',
+                      width: metrics.menuIcon,
+                      height: metrics.menuIcon,
+                      borderRadius: metrics.menuIcon / 2,
+                    },
+                  ]}
+                >
+                  <Ionicons name="image" size={metrics.isCompact ? 22 : 26} color="#fff" />
                 </View>
                 <Text style={[styles.menuBtnText, { color: theme.text }]}>Upload Photo</Text>
               </Pressable>
             </View>
-            
-            <Pressable style={[styles.menuCloseBtn, { borderTopColor: theme.border }]} onPress={() => setShowScanMenu(false)}>
+
+            <Pressable
+              style={[styles.menuCloseBtn, { borderTopColor: theme.border }]}
+              onPress={() => setShowScanMenu(false)}
+            >
               <Text style={[styles.menuCloseText, { color: theme.tint }]}>Cancel</Text>
             </Pressable>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -198,26 +377,29 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           colors={tabColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.pill, { borderColor: tabBorderColor }]}
+          style={[
+            styles.pill,
+            {
+              borderColor: tabBorderColor,
+              minHeight: metrics.pillMinHeight,
+              paddingHorizontal: metrics.pillPadH,
+            },
+          ]}
         >
-          <View style={styles.row}>
+          <View style={[styles.row, { paddingVertical: metrics.rowPadV }]}>
             {ITEMS.map((item) => {
               if (item.type === 'action') {
-                const handleAction = () => {
-                  setShowScanMenu(true);
-                };
-
                 return (
                   <TabItem
                     key={item.key}
                     item={item}
                     focused={false}
-                    onPress={handleAction}
+                    onPress={() => setShowScanMenu(true)}
+                    metrics={metrics}
                   />
                 );
               }
 
-              // Otherwise it's a standard route
               const route = state.routes.find((r) => r.name === item.routeName);
               if (!route) return null;
 
@@ -247,6 +429,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                   focused={focused}
                   badge={badge}
                   onPress={handlePress}
+                  metrics={metrics}
                 />
               );
             })}
@@ -263,7 +446,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
     alignItems: 'center',
     zIndex: 99,
   },
@@ -281,37 +463,27 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: 36,
     overflow: 'visible',
-    minHeight: 70,
     justifyContent: 'center',
-    paddingHorizontal: 6,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.65)',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 6,
   },
   itemWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
   },
   centerBtnWrap: {
-    width: 68,
-    height: 68,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
-    top: -12,
   },
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 48,
-    height: 48,
   },
   normalIconWrap: {
     alignItems: 'center',
@@ -320,9 +492,6 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   centerBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -338,7 +507,6 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#8966FA',
   },
   badge: {
     position: 'absolute',
@@ -352,27 +520,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#ffffff',
   },
   badgeText: {
     color: '#fff',
     fontSize: 9,
     fontWeight: '700',
   },
-  // Modal dialog styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(10, 1, 22, 0.48)',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: 110,
   },
   menuCard: {
-    width: '90%',
     maxWidth: 380,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderRadius: 28,
-    padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 16 },
@@ -380,47 +542,37 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
   },
   dragIndicator: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E8E4EF',
     marginBottom: 16,
   },
   menuTitle: {
-    fontSize: 19,
     fontWeight: '800',
-    color: '#0A0116',
     marginBottom: 6,
   },
   menuSubtitle: {
     fontSize: 13,
-    color: '#6B6575',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
   },
   menuRow: {
     flexDirection: 'row',
-    gap: 32,
     width: '100%',
     justifyContent: 'center',
     marginBottom: 24,
   },
   menuBtn: {
     alignItems: 'center',
-    width: 100,
   },
   menuBtnPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.95 }],
   },
   menuIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -433,19 +585,16 @@ const styles = StyleSheet.create({
   menuBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0A0116',
   },
   menuCloseBtn: {
     width: '100%',
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#F3F1F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuCloseText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#8966FA',
   },
 });

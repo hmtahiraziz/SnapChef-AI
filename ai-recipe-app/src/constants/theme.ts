@@ -95,6 +95,10 @@ export const Spacing = {
   six: 64,
 } as const;
 
-/** Extra inset for floating liquid-glass tab bar */
-export const BottomTabInset = Platform.select({ ios: 92, android: 100 }) ?? 92;
+/**
+ * Extra inset for floating liquid-glass tab bar.
+ * Sized for the protruding center scan control + home-indicator clearance.
+ * Narrow phones use a slightly smaller bar; keep this on the generous side.
+ */
+export const BottomTabInset = Platform.select({ ios: 96, android: 104 }) ?? 96;
 export const MaxContentWidth = 920;
