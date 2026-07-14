@@ -1,45 +1,39 @@
 import { useOAuth } from '@clerk/clerk-expo';
 import { makeRedirectUri } from 'expo-auth-session';
-import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback } from 'react';
 
 WebBrowser.maybeCompleteAuthSession();
 
+/**
+ * Google OAuth via Clerk. After setActive, AuthGate routes to
+ * select-country (first time) or home — do not navigate manually.
+ */
 export function useGoogleAuth() {
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
-  const router = useRouter();
 
   const signInWithGoogle = useCallback(async () => {
-    try {
-      const redirectUrl = makeRedirectUri({ path: '/oauth-callback' });
-      const runtimeLink = Linking.createURL('/', { scheme: 'airecipeapp' });
+    const redirectUrl = makeRedirectUri({ path: '/oauth-callback' });
+    const runtimeLink = Linking.createURL('/', { scheme: 'airecipeapp' });
+    if (__DEV__) {
       console.log('[GoogleOAuth] redirectUrl', redirectUrl);
       console.log('[GoogleOAuth] runtimeLink', runtimeLink);
-
-      const result = await startOAuthFlow({ redirectUrl });
-      console.log('[GoogleOAuth] startOAuthFlow result', result);
-      console.log('[GoogleOAuth] startOAuthFlow details', {
-        createdSessionId: result?.createdSessionId,
-        hasSetActive: typeof result?.setActive === 'function',
-        hasSignIn: Boolean(result?.signIn),
-        hasSignUp: Boolean(result?.signUp),
-      });
-
-      if (result?.createdSessionId && result?.setActive) {
-        console.log('[GoogleOAuth] before setActive', { createdSessionId: result.createdSessionId });
-        await result.setActive({ session: result.createdSessionId });
-        console.log('[GoogleOAuth] after setActive');
-        if (router.canDismiss()) {
-          router.dismissAll();
-        }
-        router.replace('/');
-      }
-    } catch (err) {
-      console.error('Google OAuth Error:', err);
     }
-  }, [router, startOAuthFlow]);
+
+    const result = await startOAuthFlow({ redirectUrl });
+
+    if (result?.createdSessionId && result?.setActive) {
+      await result.setActive({ session: result.createdSessionId });
+      // AuthGate watches isSignedIn + countrySetupDone and navigates.
+      return;
+    }
+
+    // User closed the browser / cancelled — not an error.
+    if (!result?.createdSessionId) return;
+
+    throw new Error('Google sign-in did not complete. Please try again.');
+  }, [startOAuthFlow]);
 
   return { signInWithGoogle };
 }

@@ -163,11 +163,11 @@ export function IngredientCapture({
                 </Pressable>
               </View>
 
-              {!aiReady && (
+              {!aiReady && __DEV__ ? (
                 <Text style={styles.warningText}>
-                  Please configure EXPO_PUBLIC_API_BASE_URL in your .env to use photo scanning.
+                  Dev: set EXPO_PUBLIC_API_BASE_URL to enable photo scanning.
                 </Text>
-              )}
+              ) : null}
             </View>
           )}
 

@@ -55,6 +55,9 @@ function AuthGate() {
   const inAuthGroup = useMemo(() => segments[0] === '(auth)', [segments]);
   const isOnboarding = useMemo(() => segments[0] === 'onboarding', [segments]);
   const isSelectCountry = useMemo(() => segments[0] === 'select-country', [segments]);
+  const isOAuthCallback = useMemo(() => segments[0] === 'oauth-callback', [segments]);
+  /** Routes signed-out users may stay on while auth is completing. */
+  const isPublicAuthSurface = inAuthGroup || isOnboarding || isOAuthCallback;
   const [seenOnboarding, setSeenOnboarding] = useState<boolean | null>(null);
   const [countrySetupDone, setCountrySetupDone] = useState<boolean | null>(null);
 
@@ -156,18 +159,22 @@ function AuthGate() {
         return;
       }
 
-      if (inAuthGroup || isOnboarding || isSelectCountry) {
+      // Country done — leave auth / onboarding / oauth / country pickers for home.
+      if (inAuthGroup || isOnboarding || isSelectCountry || isOAuthCallback) {
         redirect(returnTo ?? '/');
       }
       return;
     }
+
+    // Signed out: never bounce oauth-callback mid-handshake.
+    if (isOAuthCallback) return;
 
     if (isSelectCountry) {
       redirect(seenOnboarding ? '/sign-in' : '/onboarding');
       return;
     }
 
-    if (!isOnboarding && !inAuthGroup) {
+    if (!isPublicAuthSurface) {
       redirect(seenOnboarding ? '/sign-in' : '/onboarding');
     }
   }, [
@@ -176,6 +183,8 @@ function AuthGate() {
     inAuthGroup,
     isOnboarding,
     isSelectCountry,
+    isOAuthCallback,
+    isPublicAuthSurface,
     router,
     returnTo,
     currentPathWithQuery,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 /**
@@ -33,38 +33,43 @@ type Props = {
   onPress: () => void;
   variant?: 'compact' | 'full';
   disabled?: boolean;
+  loading?: boolean;
 };
 
 /**
  * Google sign-in button — two variants:
  *  - "compact": small centered pill, label "Google" (matches reference image)
  *  - "full": edge-to-edge pill, label "Continue with Google"
- *
- * Usage:
- *   <GoogleAuthButton onPress={signInWithGoogle} variant="compact" />
  */
-export function GoogleAuthButton({ onPress, variant = 'compact', disabled }: Props) {
+export function GoogleAuthButton({ onPress, variant = 'compact', disabled, loading }: Props) {
   const isCompact = variant === 'compact';
   const [isPressed, setIsPressed] = useState(false);
+  const isDisabled = Boolean(disabled || loading);
 
   return (
     <Pressable
       onPress={onPress}
       onPressIn={() => setIsPressed(true)}
       onPressOut={() => setIsPressed(false)}
-      disabled={disabled}
+      disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel="Continue with Google"
       style={[
         styles.base,
         isCompact ? styles.compact : styles.full,
         isPressed && styles.pressed,
-        disabled && styles.disabled,
+        isDisabled && styles.disabled,
       ]}
     >
       <View style={styles.content}>
-        <GoogleGLogo size={22} />
-        <Text style={styles.label}>{isCompact ? 'Google' : 'Continue with Google'}</Text>
+        {loading ? (
+          <ActivityIndicator color="#0A0116" />
+        ) : (
+          <>
+            <GoogleGLogo size={22} />
+            <Text style={styles.label}>{isCompact ? 'Google' : 'Continue with Google'}</Text>
+          </>
+        )}
       </View>
     </Pressable>
   );

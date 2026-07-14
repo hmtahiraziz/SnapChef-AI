@@ -86,8 +86,11 @@ export default function AccountScreen() {
         style: 'destructive',
         onPress: () => {
           void (async () => {
-            await signOut();
-            router.replace('/sign-in' as never);
+            try {
+              await signOut();
+            } finally {
+              router.replace('/sign-in' as never);
+            }
           })();
         },
       },

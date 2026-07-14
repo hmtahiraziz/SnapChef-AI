@@ -1,5 +1,5 @@
 import { useSignUp } from '@clerk/clerk-expo';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,65 +11,35 @@ import {
   getClerkErrorMessage,
 } from '@/features/auth';
 
-function normalizeInternalHref(href: string): string {
-  const [rawPath, rawQuery] = href.split('?');
-  const normalizedPathSegments = rawPath
-    .split('/')
-    .filter(Boolean)
-    .filter((segment) => !(segment.startsWith('(') && segment.endsWith(')')))
-    .filter((segment) => segment !== 'index');
-
-  const normalizedPath =
-    normalizedPathSegments.length === 0 ? '/' : `/${normalizedPathSegments.join('/')}`;
-  if (!rawQuery || rawQuery.length === 0) return normalizedPath;
-  return `${normalizedPath}?${rawQuery}`;
-}
-
-function sanitizeReturnTo(raw: unknown): string | null {
-  const value = typeof raw === 'string' ? raw : null;
-  if (!value || value.length === 0) return null;
-  if (!value.startsWith('/') || value.startsWith('//')) return null;
-
-  const normalized = normalizeInternalHref(value);
-  const [pathOnly] = normalized.split('?');
-  const authPaths = new Set([
-    '/sign-in',
-    '/sign-up',
-    '/verify-email',
-    '/forgot-password',
-    '/reset-password',
-  ]);
-  if (authPaths.has(pathOnly)) return null;
-
-  return normalized;
-}
-
 export default function VerifyEmailScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
-  const router = useRouter();
   const params = useLocalSearchParams();
   const email = typeof params.email === 'string' ? params.email : '';
-  const returnTo = sanitizeReturnTo(params.returnTo);
 
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendHint, setResendHint] = useState('');
 
   const onVerify = useCallback(async () => {
     if (!isLoaded) return;
+    const trimmed = code.trim();
+    if (trimmed.length < 6) {
+      setError('Enter the 6-digit code from your email.');
+      return;
+    }
     setLoading(true);
     setError('');
+    setResendHint('');
     try {
       const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code,
+        code: trimmed,
       });
 
       if (completeSignUp.status === 'complete') {
         await setActive({ session: completeSignUp.createdSessionId });
-        if (router.canDismiss()) {
-          router.dismissAll();
-        }
-        router.replace((returnTo ?? '/') as any);
+        // AuthGate → select-country (new users) or home.
       } else {
         setError('Verification incomplete. Try again.');
       }
@@ -78,20 +48,25 @@ export default function VerifyEmailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, signUp, code, setActive, router, returnTo]);
+  }, [isLoaded, signUp, code, setActive]);
 
   const onResend = useCallback(async () => {
     if (!isLoaded) return;
+    setResendLoading(true);
     setError('');
+    setResendHint('');
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setResendHint('A new code was sent. Check your inbox.');
     } catch (err: unknown) {
       setError(getClerkErrorMessage(err, 'Failed to resend code.'));
+    } finally {
+      setResendLoading(false);
     }
   }, [isLoaded, signUp]);
 
   return (
-    <AuthScreenShell compact>
+    <AuthScreenShell compact showBackButton>
       <Text className="text-title text-ink mb-1">Verify Email</Text>
       <Text className="text-body text-muted mb-5">
         Enter the 6-digit code sent to {email || 'your email'} for {BRAND_NAME}.
@@ -110,11 +85,26 @@ export default function VerifyEmailScreen() {
         />
 
         {error ? <Text className="text-[#c62828] text-[13px] text-center">{error}</Text> : null}
+        {resendHint ? (
+          <Text className="text-primary text-[13px] text-center font-semibold">{resendHint}</Text>
+        ) : null}
 
-        <AuthPrimaryButton label="Verify Code" onPress={onVerify} loading={loading} />
+        <AuthPrimaryButton
+          label="Verify Code"
+          onPress={onVerify}
+          loading={loading}
+          disabled={resendLoading}
+        />
 
-        <TouchableOpacity className="self-center p-2" onPress={onResend}>
-          <Text className="text-primary text-sm font-semibold">Didn&apos;t receive a code? Resend</Text>
+        <TouchableOpacity
+          className="self-center p-2"
+          onPress={() => void onResend()}
+          disabled={resendLoading || loading}
+          accessibilityRole="button"
+          accessibilityLabel="Resend verification code">
+          <Text className="text-primary text-sm font-semibold">
+            {resendLoading ? 'Sending…' : "Didn't receive a code? Resend"}
+          </Text>
         </TouchableOpacity>
       </View>
     </AuthScreenShell>

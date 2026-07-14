@@ -71,6 +71,7 @@ export default function SignInScreen() {
     setError('');
     try {
       await signInWithGoogle();
+      // AuthGate navigates after session is active.
     } catch (err: unknown) {
       setError(getClerkErrorMessage(err, 'Google sign in failed.'));
     } finally {
@@ -145,7 +146,8 @@ export default function SignInScreen() {
 
         <GoogleAuthButton
           onPress={onGoogle}
-          disabled={googleLoading || loading}
+          loading={googleLoading}
+          disabled={loading}
           variant="compact"
         />
 

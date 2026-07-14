@@ -1,18 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import { BrandMark } from '@/components/brand-mark';
 import { GenerateRecipeCard } from '@/components/generate-recipe-card';
 import { ScreenContainer } from '@/components/screen-container';
-import { GlassCard } from '@/components/ui/glass-card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { IngredientComposer } from '@/components/ui/ingredient-composer';
 import { RecipeGlassCard } from '@/components/ui/recipe-glass-card';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -24,9 +24,17 @@ import { IngredientCapture, useIngredients } from '@/features/scan';
 import { CountryDropdown } from '@/features/settings';
 import { useTheme } from '@/hooks/use-theme';
 
+type ScanSource = 'camera' | 'gallery' | null;
+
 function formatTime(prep?: number, cook?: number): string {
   const total = (prep ?? 0) + (cook ?? 0);
   return total > 0 ? `${total} minutes` : 'Time varies';
+}
+
+function greetingForHour(hours: number): string {
+  if (hours < 12) return 'Good morning';
+  if (hours < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 export default function HomeScreen() {
@@ -37,8 +45,41 @@ export default function HomeScreen() {
 
   const [showCamera, setShowCamera] = useState(false);
   const [scannedImageUri, setScannedImageUri] = useState<string | null>(null);
-  const { openCamera, openGallery } = useLocalSearchParams<{ openCamera?: string; openGallery?: string }>();
-  const [initialAction, setInitialAction] = useState<'camera' | 'gallery' | null>(null);
+  const [initialAction, setInitialAction] = useState<ScanSource>(null);
+  const { openCamera, openGallery } = useLocalSearchParams<{
+    openCamera?: string;
+    openGallery?: string;
+  }>();
+
+  const isDark = theme.text === '#F5F2FF';
+  const previewFavorites = favorites.slice(0, 4);
+  const tints = ['lavender', 'mint', 'cream', 'peach'] as const;
+
+  const craftColors = isDark
+    ? (['#201936', '#161026'] as const)
+    : (['#EBE5FF', '#C7B5FD'] as const);
+  const craftBorderColor = isDark
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.5)';
+  const wandBgColor = isDark ? '#2C2442' : '#ffffff';
+
+  const openScan = useCallback((source: ScanSource = null) => {
+    setInitialAction(source);
+    setShowCamera(true);
+  }, []);
+
+  const closeScan = useCallback(() => {
+    setShowCamera(false);
+    setInitialAction(null);
+  }, []);
+
+  const clearScanParams = useCallback(() => {
+    router.setParams({
+      openCamera: undefined,
+      openGallery: undefined,
+      time: undefined,
+    });
+  }, []);
 
   useEffect(() => {
     if (ingredients.length === 0) {
@@ -48,48 +89,46 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (openCamera === 'true') {
-      setInitialAction('camera');
-      setShowCamera(true);
-    } else if (openGallery === 'true') {
-      setInitialAction('gallery');
-      setShowCamera(true);
+      openScan('camera');
+      clearScanParams();
+      return;
     }
-  }, [openCamera, openGallery]);
+    if (openGallery === 'true') {
+      openScan('gallery');
+      clearScanParams();
+    }
+  }, [openCamera, openGallery, openScan, clearScanParams]);
 
-  const getGreeting = () => {
-    const hours = new Date().getHours();
-    if (hours < 12) return '🌅 Good morning';
-    if (hours < 18) return '☀️ Good afternoon';
-    return '🌙 Good evening';
+  const onGenerate = () => {
+    if (ingredients.length === 0) return;
+    router.push({
+      pathname: '/recipes',
+      params: {
+        ingredients: JSON.stringify(ingredients),
+        country,
+        scanImage: scannedImageUri || undefined,
+      },
+    });
   };
-
-  const history = favorites.slice(0, 4);
-  const tints = ['lavender', 'mint', 'cream', 'peach'] as const;
-  const isDark = theme.text === '#F5F2FF';
-
-  const craftColors = isDark
-    ? (['#201936', '#161026'] as const)
-    : (['#EBE5FF', '#C7B5FD'] as const);
-
-  const craftBorderColor = isDark
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.5)';
-
-  const wandBgColor = isDark ? '#2C2442' : '#ffffff';
 
   return (
     <ScreenContainer scroll gradient>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.greeting, isDark && styles.greetingDark]}>{getGreeting()}</Text>
+          <Text style={[styles.greeting, isDark && styles.greetingDark]}>
+            {greetingForHour(new Date().getHours())}
+          </Text>
           <View style={styles.brandRow}>
             <BrandMark size={33} tone={isDark ? 'dark' : 'light'} />
             <Text style={[styles.brand, { color: theme.text }]}>SnapChef AI</Text>
           </View>
         </View>
         <Pressable
-          onPress={() => router.push('/settings')}
-          style={[styles.headerProfileBtn, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+          onPress={() => router.push('/(tabs)/settings')}
+          style={[
+            styles.headerProfileBtn,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="Settings"
         >
@@ -109,7 +148,9 @@ export default function HomeScreen() {
               <View style={[styles.wandContainer, { backgroundColor: wandBgColor }]}>
                 <Ionicons name="sparkles" size={18} color={isDark ? '#FFF6D6' : '#0A0116'} />
               </View>
-              <Text style={[styles.craftTitle, { color: theme.text }]}>Crafting a recipe from your kitchen treasures</Text>
+              <Text style={[styles.craftTitle, { color: theme.text }]}>
+                Craft a recipe from what you have
+              </Text>
             </View>
 
             <IngredientComposer
@@ -131,17 +172,11 @@ export default function HomeScreen() {
               <IngredientCapture
                 onIngredientsExtracted={(items, imageUri) => {
                   mergeIngredients(items);
-                  if (imageUri) {
-                    setScannedImageUri(imageUri);
-                  }
-                  setShowCamera(false);
-                  setInitialAction(null);
+                  if (imageUri) setScannedImageUri(imageUri);
+                  closeScan();
                 }}
                 initialAction={initialAction}
-                onClose={() => {
-                  setShowCamera(false);
-                  setInitialAction(null);
-                }}
+                onClose={closeScan}
               />
             ) : null}
 
@@ -149,31 +184,22 @@ export default function HomeScreen() {
               ingredientCount={ingredients.length}
               country={country}
               disabled={ingredients.length === 0}
-              onPress={() =>
-                router.push({
-                  pathname: '/recipes',
-                  params: {
-                    ingredients: JSON.stringify(ingredients),
-                    country,
-                    scanImage: scannedImageUri || undefined,
-                  },
-                })
-              }
+              onPress={onGenerate}
             />
           </View>
         </LinearGradient>
       </View>
 
-      {!hasApiBaseUrl() ? (
+      {__DEV__ && !hasApiBaseUrl() ? (
         <Text style={styles.warning}>
-          Configure EXPO_PUBLIC_API_BASE_URL in .env to enable AI scan.
+          Dev: set EXPO_PUBLIC_API_BASE_URL to enable AI scan.
         </Text>
       ) : null}
 
       <Pressable
-        onPress={() => router.push('/(tabs)/settings')}
+        onPress={() => openScan(null)}
         accessibilityRole="button"
-        accessibilityLabel="Navigate to settings to cook smarter with what you have"
+        accessibilityLabel="Scan ingredients with SnapChef AI"
         style={({ pressed }) => [
           styles.promoPressable,
           pressed && styles.promoPressablePressed,
@@ -188,29 +214,32 @@ export default function HomeScreen() {
           <View style={styles.promoHeaderRow}>
             <View style={styles.promoBadge}>
               <Ionicons name="sparkles" size={12} color="#8966FA" />
-              <Text style={styles.promoBadgeText}>SnapChef AI</Text>
+              <Text style={styles.promoBadgeText}>AI Scan</Text>
             </View>
             <Ionicons name="arrow-forward-circle" size={24} color="#ffffff" style={{ opacity: 0.9 }} />
           </View>
-          <Text style={styles.promoTitle}>Cook smarter with what you have</Text>
-          <Text style={styles.promoBody}>Snap ingredients. Get regional recipes in seconds.</Text>
+          <Text style={styles.promoTitle}>Snap ingredients. Cook smarter.</Text>
+          <Text style={styles.promoBody}>
+            Take or upload a photo — SnapChef finds recipes from your kitchen.
+          </Text>
         </LinearGradient>
       </Pressable>
 
       <SectionHeader
-        title="History"
-        actionLabel="See all"
-        onAction={() => router.push('/favorites')}
+        title="Favorites"
+        actionLabel={previewFavorites.length > 0 ? 'See all' : undefined}
+        onAction={previewFavorites.length > 0 ? () => router.push('/favorites') : undefined}
       />
 
-      {history.length === 0 ? (
-        <GlassCard tint="white">
-          <Text style={styles.emptyHistory}>
-            Saved recipes will show up here. Generate something delicious to get started.
-          </Text>
-        </GlassCard>
+      {previewFavorites.length === 0 ? (
+        <EmptyState
+          title="No favorites yet"
+          description="Generate a recipe, then save it to see it here."
+          actionLabel="Scan ingredients"
+          onAction={() => openScan('camera')}
+        />
       ) : (
-        history.map((recipe, index) => (
+        previewFavorites.map((recipe, index) => (
           <RecipeGlassCard
             key={recipe.id}
             title={recipe.title}
@@ -220,12 +249,9 @@ export default function HomeScreen() {
             imageUrl={recipe.imageUrl}
             recipeId={recipe.id}
             cuisine={recipe.cuisine ?? recipe.country}
-            favorited
             onPress={() => router.push(`/recipe/${recipe.id}`)}
-            onToggleFavorite={() =>
-              Alert.alert('Open Favorites', 'Manage saved recipes in the Favorites tab.')
-            }
-          />        ))
+          />
+        ))
       )}
     </ScreenContainer>
   );
@@ -270,11 +296,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
     shadowColor: '#8966FA',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -295,7 +319,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   craftInner: {
     padding: 20,
@@ -311,7 +334,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -324,7 +346,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#0A0116',
     lineHeight: 20,
   },
   sectionBlock: {
@@ -333,7 +354,6 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: SnapChef.ink,
     opacity: 0.8,
   },
   warning: {
@@ -345,7 +365,7 @@ const styles = StyleSheet.create({
   promoPressable: {
     borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.four,
   },
   promoPressablePressed: {
     opacity: 0.9,
@@ -389,10 +409,5 @@ const styles = StyleSheet.create({
     color: '#E3DCFF',
     lineHeight: 18,
     fontWeight: '500',
-  },
-  emptyHistory: {
-    fontSize: 14,
-    color: SnapChef.muted,
-    lineHeight: 20,
   },
 });

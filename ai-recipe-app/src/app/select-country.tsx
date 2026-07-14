@@ -23,12 +23,16 @@ export default function SelectCountryScreen() {
 
   const onContinue = async () => {
     if (!selected || saving) return;
+    if (!userId) {
+      // Session should exist; if not, AuthGate will send them to sign-in.
+      router.replace('/sign-in');
+      return;
+    }
     setSaving(true);
     try {
       await setCountry(selected);
-      if (userId) {
-        await setHasCompletedCountrySetup(userId, true);
-      }
+      await setHasCompletedCountrySetup(userId, true);
+      // AuthGate also reacts to countrySetupDone; replace home for snappy UX.
       if (router.canDismiss()) {
         router.dismissAll();
       }

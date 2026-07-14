@@ -76,8 +76,12 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: () => {
           void (async () => {
-            await signOut();
-            router.replace('/sign-in');
+            try {
+              await signOut();
+            } finally {
+              // AuthGate also redirects signed-out users; this makes sign-in immediate.
+              router.replace('/sign-in');
+            }
           })();
         },
       },

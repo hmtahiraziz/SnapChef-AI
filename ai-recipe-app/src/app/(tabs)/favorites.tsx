@@ -45,7 +45,9 @@ export default function FavoritesScreen() {
       {!isLoading && favorites.length === 0 ? (
         <EmptyState
           title="No favorites yet"
-          description="Tap the heart on a recipe to save it for later."
+          description="Generate a recipe, then save it with the heart to see it here."
+          actionLabel="Go to Home"
+          onAction={() => router.push('/(tabs)')}
         />
       ) : null}
 

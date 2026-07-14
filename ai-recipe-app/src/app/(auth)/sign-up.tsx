@@ -101,6 +101,7 @@ export default function SignUpScreen() {
     setError('');
     try {
       await signInWithGoogle();
+      // AuthGate navigates after session is active.
     } catch (err: unknown) {
       setError(getClerkErrorMessage(err, 'Google sign up failed.'));
     } finally {
@@ -190,7 +191,8 @@ export default function SignUpScreen() {
 
         <GoogleAuthButton
           onPress={onGoogle}
-          disabled={googleLoading || loading}
+          loading={googleLoading}
+          disabled={loading}
           variant="compact"
         />
 
