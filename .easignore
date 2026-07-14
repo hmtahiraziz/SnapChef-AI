@@ -1,0 +1,62 @@
+# Learn more https://docs.expo.dev/build/eas-json/#easignore
+# This file is at the root of the Git repository
+
+# Python virtual environments & packages
+.venv/
+backend/.venv/
+backend/.venv312/
+__pycache__/
+*.pyc
+backend/.env
+backend/
+
+# Editor settings & backups
+.vscode/
+.agents/
+.git-backup
+UPDATE_SUMMARY.md
+
+# App dependencies
+ai-recipe-app/node_modules/
+
+# App Expo build dirs
+ai-recipe-app/.expo/
+ai-recipe-app/dist/
+ai-recipe-app/web-build/
+ai-recipe-app/expo-env.d.ts
+
+# Generated native folders (EAS Build runs prebuild on the cloud for managed projects)
+/ai-recipe-app/ios
+/ai-recipe-app/ios/**
+ai-recipe-app/ios/
+/ai-recipe-app/android
+/ai-recipe-app/android/**
+ai-recipe-app/android/
+
+# Native keys and backups
+ai-recipe-app/*.jks
+ai-recipe-app/*.p8
+ai-recipe-app/*.p12
+ai-recipe-app/*.key
+ai-recipe-app/*.mobileprovision
+ai-recipe-app/*.orig.*
+ai-recipe-app/.kotlin/
+
+# Metro
+ai-recipe-app/.metro-health-check*
+
+# debug
+ai-recipe-app/npm-debug.*
+ai-recipe-app/yarn-debug.*
+ai-recipe-app/yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+ai-recipe-app/.env
+ai-recipe-app/.env*.local
+
+# typescript
+ai-recipe-app/*.tsbuildinfo

@@ -41,6 +41,5 @@ yarn-error.*
 example
 
 # generated native folders
-/ios
-/android
-eas.json
+ios/
+android/

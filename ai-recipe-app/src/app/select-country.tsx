@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandMark } from '@/components/brand-mark';
 import { CountryDropdown } from '@/features/settings';
 import { SnapChef, Spacing } from '@/constants/theme';
 import { usePreferences } from '@/context/PreferencesContext';
@@ -50,7 +51,10 @@ export default function SelectCountryScreen() {
       />
 
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>{BRAND_NAME}</Text>
+        <View style={styles.brandRow}>
+          <BrandMark size={36} tone="light" />
+          <Text style={styles.eyebrow}>{BRAND_NAME}</Text>
+        </View>
         <Text style={styles.title}>Choose your cuisine</Text>
         <Text style={styles.body}>
           We&apos;ll prioritize recipes and flavors for this country. Pick Others if yours
@@ -101,6 +105,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 8,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
   },
   eyebrow: {
     fontSize: 11,

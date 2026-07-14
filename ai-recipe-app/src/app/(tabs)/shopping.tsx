@@ -456,7 +456,7 @@ export default function ShoppingScreen() {
             <Text style={styles.emptyEmoji}>🛒</Text>
             <Text style={[styles.emptyTitle, { color: theme.text }]}>Your list is empty</Text>
             <Text style={[styles.emptyDesc, { color: theme.textSecondary }]}>
-              Add items above, or open a recipe and tap "Add Missing" to fill your list.
+              Add items above, or open a recipe and tap &quot;Add Missing&quot; to fill your list.
             </Text>
             <Pressable
               onPress={() => router.push('/(tabs)')}

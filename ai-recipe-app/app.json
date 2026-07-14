@@ -3,6 +3,7 @@
     "name": "SnapChef AI",
     "slug": "ai-recipe-app",
     "version": "1.0.0",
+    "owner": "technology726",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "airecipeapp",
@@ -20,10 +21,9 @@
         "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1E1633",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.technology726.airecipeapp"
@@ -46,7 +46,8 @@
         {
           "backgroundColor": "#8966FA",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 148,
+          "resizeMode": "contain"
         }
       ],
       "expo-secure-store"

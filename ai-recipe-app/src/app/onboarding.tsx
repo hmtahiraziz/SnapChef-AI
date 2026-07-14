@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandMark } from '@/components/brand-mark';
 import { AUTH_COPY, BRAND_NAME, GetStartedButton } from '@/features/auth';
 import { setHasSeenOnboarding } from '@/services/onboardingStorage';
 
@@ -29,6 +30,11 @@ export default function OnboardingScreen() {
     <View
       className="flex-1 bg-lavender"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 16 }}>
+      <View className="px-6 pt-2 pb-1 flex-row items-center gap-2.5">
+        <BrandMark size={isTablet ? 40 : 34} tone="light" />
+        <Text className="text-base font-extrabold text-ink tracking-wide">{BRAND_NAME}</Text>
+      </View>
+
       <View className="px-3 items-center justify-center" style={{ flex: heroFlex }}>
         <Image
           source={require('@/assets/images/onboarding-chef.png')}

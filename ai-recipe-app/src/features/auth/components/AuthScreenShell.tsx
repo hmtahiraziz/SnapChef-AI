@@ -13,8 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
 
 import { BRAND_NAME } from '../constants';
 
@@ -33,9 +33,7 @@ export function AuthScreenShell({ children, showBackButton, compact }: AuthScree
   // Check if we should render back button
   const canGoBack = showBackButton !== undefined ? showBackButton : router.canGoBack();
 
-  // Dynamic logo container & icon sizes
-  const logoContainerSize = isCompact ? 56 : 72;
-  const logoIconSize = isCompact ? 28 : 36;
+  const logoSize = isCompact ? 56 : 72;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -66,12 +64,21 @@ export function AuthScreenShell({ children, showBackButton, compact }: AuthScree
             style={[
               styles.logoBadge,
               {
-                width: logoContainerSize,
-                height: logoContainerSize,
-                borderRadius: logoContainerSize * 0.35,
+                width: logoSize,
+                height: logoSize,
+                borderRadius: logoSize * 0.28,
               },
             ]}>
-            <MaterialCommunityIcons name="chef-hat" size={logoIconSize} color="#FFFFFF" />
+            <Image
+              source={require('@/assets/images/icon.png')}
+              style={{
+                width: logoSize,
+                height: logoSize,
+                borderRadius: logoSize * 0.28,
+              }}
+              contentFit="cover"
+              accessibilityLabel={BRAND_NAME}
+            />
           </View>
           <Text style={[styles.brandTitle, isCompact && styles.brandTitleCompact]}>
             {BRAND_NAME}
@@ -143,7 +150,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoBadge: {
-    backgroundColor: '#8966FA',
+    overflow: 'hidden',
+    backgroundColor: '#1E1633',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#8966FA',

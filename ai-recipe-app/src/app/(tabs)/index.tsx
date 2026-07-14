@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BrandMark } from '@/components/brand-mark';
 import { GenerateRecipeCard } from '@/components/generate-recipe-card';
 import { ScreenContainer } from '@/components/screen-container';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -80,8 +81,11 @@ export default function HomeScreen() {
     <ScreenContainer scroll gradient>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={[styles.brand, { color: theme.text }]}>SnapChef AI</Text>
+          <Text style={[styles.greeting, isDark && styles.greetingDark]}>{getGreeting()}</Text>
+          <View style={styles.brandRow}>
+            <BrandMark size={33} tone={isDark ? 'dark' : 'light'} />
+            <Text style={[styles.brand, { color: theme.text }]}>SnapChef AI</Text>
+          </View>
         </View>
         <Pressable
           onPress={() => router.push('/settings')}
@@ -237,11 +241,19 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     gap: 2,
+    flex: 1,
+    paddingRight: 12,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   brand: {
     fontSize: 28,
     fontWeight: '800',
     color: SnapChef.ink,
+    flexShrink: 1,
   },
   greeting: {
     fontSize: 10,
@@ -250,6 +262,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     marginBottom: 2,
+  },
+  greetingDark: {
+    color: '#C4B0FF',
   },
   headerProfileBtn: {
     width: 44,
