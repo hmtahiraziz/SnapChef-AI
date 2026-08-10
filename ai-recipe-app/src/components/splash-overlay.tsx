@@ -127,7 +127,7 @@ export function AnimatedSplashOverlay() {
             },
           ]}>
           <Image
-            source={require('@/assets/images/splash-icon.png')}
+            source={require('@/assets/images/icon.png')}
             style={{ width: logoSize, height: logoSize, borderRadius: logoSize * 0.28 }}
             contentFit="cover"
             transition={0}
