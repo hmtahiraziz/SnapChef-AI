@@ -11,4 +11,5 @@ __pycache__/
 backend/.env
 
 # Editor settings
-.vscode/
+config.bat
+node_modules
