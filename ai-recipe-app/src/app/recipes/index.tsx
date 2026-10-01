@@ -7,13 +7,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { GlassBackButton } from '@/components/glass-back-button';
 import {
-  RecipeCardSkeleton,
   RecipeResultCard,
   type RecipeCardTint,
 } from '@/components/recipe-result-card';
 import { ScreenContainer } from '@/components/screen-container';
 import { EmptyState } from '@/components/ui/empty-state';
 import { GlassPill } from '@/components/ui/glass-pill';
+import { RecipeGeneratingLoader } from '@/components/ui/recipe-generating-loader';
 import { SnapChef, Spacing } from '@/constants/theme';
 import {
   parseCountryParam,
@@ -139,13 +139,12 @@ export default function RecipesScreen() {
         </View>
 
         {isLoading ? (
-          <View style={isTablet ? styles.gridWide : styles.list}>
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={isTablet ? styles.gridItem : undefined}>
-                <RecipeCardSkeleton />
-              </View>
-            ))}
-          </View>
+          <RecipeGeneratingLoader
+            country={selectedCountry}
+            ingredientCount={ingredientList.length}
+            skeletonCount={2}
+            wide={isTablet}
+          />
         ) : null}
 
         {error ? (
