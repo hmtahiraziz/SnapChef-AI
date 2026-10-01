@@ -39,7 +39,7 @@ export async function generateRecipesFromIngredients(
       method: 'POST',
       body: JSON.stringify({
         ingredients,
-        max_recipes: 3,
+        max_recipes: 2,
         country: country.trim(),
       }),
     });

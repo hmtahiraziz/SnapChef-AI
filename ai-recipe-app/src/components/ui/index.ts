@@ -6,3 +6,4 @@ export { SectionHeader } from './section-header';
 export { FloatingTabBar } from './floating-tab-bar';
 export { EmptyState } from './empty-state';
 export { InlineError } from './inline-error';
+export { RecipeGeneratingLoader } from './recipe-generating-loader';
