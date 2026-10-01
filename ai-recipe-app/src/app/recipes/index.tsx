@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
     minWidth: 120,
-    borderRadius: 999,
+    borderRadius: 28,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 12,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   regenerateBtn: {
     minHeight: 52,
-    borderRadius: 999,
+    borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

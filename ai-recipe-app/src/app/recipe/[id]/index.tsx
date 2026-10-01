@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     minHeight: 52,
-    borderRadius: 999,
+    borderRadius: 28,
     backgroundColor: '#F5F2FF',
     borderWidth: 1.5,
     borderColor: 'rgba(137, 102, 250, 0.22)',
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   primaryWrap: {
-    borderRadius: 999,
+    borderRadius: 28,
     shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.32,
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     minHeight: 56,
-    borderRadius: 999,
+    borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

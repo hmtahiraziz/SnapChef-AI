@@ -20,6 +20,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import { Radii } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const ITEMS = [
@@ -49,6 +50,8 @@ type TabMetrics = {
   menuGap: number;
   menuBtnWidth: number;
   menuTitleSize: number;
+  pillRadius: number;
+  maxWidth: number;
   /** Space reserved above the home-indicator / tab bar for the scan sheet. */
   scanSheetBottomInset: number;
 };
@@ -62,16 +65,22 @@ function buildTabMetrics(
   const isCompact = width < 380;
   const isTiny = width < 340;
   const isShort = height < 700;
+  const isTablet = width >= 768;
 
   const bottomPad = Math.max(safeBottom, isCompact ? 8 : 12);
-  const horizontalPad = Math.max(safeHorizontal, isTiny ? 10 : isCompact ? 12 : 16);
+  const horizontalPad = Math.max(
+    safeHorizontal,
+    isTiny ? 10 : isCompact ? 12 : isTablet ? 24 : 16,
+  );
 
-  const pillMinHeight = isTiny ? 58 : isCompact ? 62 : isShort ? 66 : 70;
-  const centerWrap = isTiny ? 54 : isCompact ? 58 : 68;
-  const centerBtn = isTiny ? 46 : isCompact ? 50 : 58;
+  const pillMinHeight = isTiny ? 56 : isCompact ? 60 : isShort ? 64 : isTablet ? 72 : 68;
+  const centerWrap = isTiny ? 52 : isCompact ? 56 : isTablet ? 70 : 64;
+  const centerBtn = isTiny ? 44 : isCompact ? 48 : isTablet ? 58 : 54;
   const centerLift = isTiny ? -8 : isCompact ? -10 : -12;
-  const pillPadH = isTiny ? 2 : isCompact ? 4 : 6;
+  const pillPadH = isTiny ? 4 : isCompact ? 6 : 8;
   const rowPadV = isCompact ? 4 : 6;
+  const pillRadius = isTiny ? 30 : Radii.nav;
+  const maxWidth = isTablet ? 560 : 500;
 
   // Pill body + protruding center + gap so sheet sits cleanly above the bar.
   const scanSheetBottomInset =
@@ -84,18 +93,20 @@ function buildTabMetrics(
     pillMinHeight,
     pillPadH,
     rowPadV,
-    iconSize: isTiny ? 20 : isCompact ? 22 : 25,
+    iconSize: isTiny ? 20 : isCompact ? 22 : isTablet ? 26 : 24,
     iconHit: isTiny ? 40 : isCompact ? 44 : 48,
     itemMinHeight: isTiny ? 44 : isCompact ? 48 : 52,
     centerWrap,
     centerBtn,
-    centerIcon: isTiny ? 20 : isCompact ? 21 : 24,
+    centerIcon: isTiny ? 20 : isCompact ? 21 : isTablet ? 26 : 24,
     centerLift,
     menuPad: isCompact ? 18 : 24,
     menuIcon: isCompact ? 56 : 64,
     menuGap: isCompact ? 20 : 32,
     menuBtnWidth: isCompact ? 88 : 100,
     menuTitleSize: isCompact ? 17 : 19,
+    pillRadius,
+    maxWidth,
     scanSheetBottomInset,
   };
 }
@@ -121,11 +132,11 @@ function TabItem({
   }));
 
   const isCenter = item.type === 'action';
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
-  const inactiveIconColor = isDark ? 'rgba(245, 242, 255, 0.45)' : 'rgba(10, 1, 22, 0.45)';
-  const activeIconColor = '#8966FA';
-  const centerBgColor = isDark ? '#1C1826' : '#ffffff';
+  const inactiveIconColor = theme.iconMuted;
+  const activeIconColor = theme.tint;
+  const centerBgColor = isDark ? theme.backgroundElement : '#ffffff';
 
   return (
     <Pressable
@@ -183,7 +194,7 @@ function TabItem({
         ]}
       >
         {isCenter ? (
-          <Ionicons name="sparkles" size={metrics.centerIcon} color="#8966FA" />
+          <Ionicons name="sparkles" size={metrics.centerIcon} color={theme.tint} />
         ) : (
           <View style={styles.normalIconWrap}>
             {item.key === 'home' && (
@@ -238,7 +249,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const { width, height } = useWindowDimensions();
   const [showScanMenu, setShowScanMenu] = useState(false);
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   const metrics = useMemo(
     () =>
@@ -252,10 +263,10 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   );
 
   const tabColors = isDark
-    ? (['rgba(28, 24, 38, 0.95)', 'rgba(20, 16, 26, 0.92)'] as const)
+    ? (['rgba(22, 22, 30, 0.96)', 'rgba(14, 14, 20, 0.94)'] as const)
     : (['rgba(255, 255, 255, 0.92)', 'rgba(247, 243, 255, 0.88)'] as const);
 
-  const tabBorderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.65)';
+  const tabBorderColor = isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.65)';
 
   return (
     <View
@@ -285,8 +296,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             style={[
               styles.menuCard,
               {
-                backgroundColor: isDark ? '#1C1826' : 'rgba(255, 255, 255, 0.98)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.85)',
+                backgroundColor: isDark ? theme.backgroundElement : 'rgba(255, 255, 255, 0.98)',
+                borderColor: isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.85)',
                 padding: metrics.menuPad,
                 width: metrics.isCompact ? '94%' : '90%',
               },
@@ -372,7 +383,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         </Pressable>
       </Modal>
 
-      <View style={styles.pillShadow}>
+      <View style={[styles.pillShadow, { maxWidth: metrics.maxWidth, borderRadius: metrics.pillRadius }]}>
         <LinearGradient
           colors={tabColors}
           start={{ x: 0, y: 0 }}
@@ -383,6 +394,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
               borderColor: tabBorderColor,
               minHeight: metrics.pillMinHeight,
               paddingHorizontal: metrics.pillPadH,
+              borderRadius: metrics.pillRadius,
             },
           ]}
         >
@@ -451,8 +463,6 @@ const styles = StyleSheet.create({
   },
   pillShadow: {
     width: '100%',
-    maxWidth: 500,
-    borderRadius: 36,
     shadowColor: '#8966FA',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.12,
@@ -461,7 +471,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pill: {
-    borderRadius: 36,
     overflow: 'visible',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -534,7 +543,7 @@ const styles = StyleSheet.create({
   },
   menuCard: {
     maxWidth: 380,
-    borderRadius: 28,
+    borderRadius: Radii.card,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 16 },

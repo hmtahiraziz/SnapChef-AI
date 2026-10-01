@@ -10,23 +10,16 @@ import { useShoppingList } from '@/context/ShoppingListContext';
 import { SettingsRow } from '@/features/settings';
 import { Spacing } from '@/constants/theme';
 
-export default function SettingsScreen() {
-  const { country, theme: themePreference, resetToDefaults } = usePreferences();
+export default function PreferencesScreen() {
+  const { country, resetToDefaults } = usePreferences();
   const { clearAll } = useShoppingList();
-
-  const themeLabel =
-    themePreference === 'system'
-      ? 'System'
-      : themePreference === 'dark'
-        ? 'Dark'
-        : 'Light';
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const handleClearLocalData = () => {
     Alert.alert(
       'Clear local data?',
-      'This clears your shopping list and resets cuisine/theme preferences on this device. Favorites are kept.',
+      'This clears your shopping list and resets cuisine preferences on this device. Favorites are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -56,11 +49,6 @@ export default function SettingsScreen() {
             label="Default cuisine"
             value={country}
             onPress={() => router.push('/preferences/cuisine' as Href)}
-          />
-          <SettingsRow
-            label="Appearance"
-            value={themeLabel}
-            onPress={() => router.push('/preferences/appearance' as Href)}
           />
         </View>
       </GlassCard>

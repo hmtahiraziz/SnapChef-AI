@@ -67,7 +67,7 @@ export function CountryDropdown({
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -124,14 +124,14 @@ export function CountryDropdown({
                   ? 'rgba(137, 102, 250, 0.15)'
                   : '#F3EFFF'
                 : isDark
-                  ? '#2A2438'
+                  ? theme.backgroundSelected
                   : '#FFFFFF',
               borderColor: selected
                 ? isDark
                   ? 'rgba(137, 102, 250, 0.4)'
                   : 'rgba(137, 102, 250, 0.22)'
                 : isDark
-                  ? 'rgba(255, 255, 255, 0.04)'
+                  ? theme.cardBorder
                   : 'transparent',
             },
             pressed && styles.optionPressed,
@@ -197,7 +197,7 @@ export function CountryDropdown({
             { borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.18)' },
           ]}>
           <LinearGradient
-            colors={isDark ? ['#2A2438', '#1C1826'] : ['#F8F5FF', '#FFFFFF']}
+            colors={isDark ? [theme.backgroundSelected, theme.backgroundElement] : ['#F8F5FF', '#FFFFFF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -208,7 +208,7 @@ export function CountryDropdown({
             style={[
               styles.triggerFlagBadge,
               {
-                backgroundColor: isDark ? '#3D3550' : '#EDE7FF',
+                backgroundColor: isDark ? theme.field : '#EDE7FF',
                 borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.12)',
               },
             ]}>
@@ -234,7 +234,7 @@ export function CountryDropdown({
             style={[
               styles.triggerChevron,
               {
-                backgroundColor: isDark ? '#2A2438' : '#F3F0FF',
+                backgroundColor: isDark ? theme.field : '#F3F0FF',
                 borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.1)',
               },
             ]}>
@@ -264,8 +264,8 @@ export function CountryDropdown({
           style={[
             styles.sheet,
             {
-              backgroundColor: isDark ? '#1C1826' : '#FAFAFD',
-              borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'transparent',
+              backgroundColor: isDark ? theme.backgroundElement : '#FAFAFD',
+              borderTopColor: isDark ? theme.cardBorder : 'transparent',
               borderTopWidth: isDark ? 1 : 0,
               paddingBottom: Math.max(insets.bottom, 16) + 8,
             },
@@ -285,7 +285,7 @@ export function CountryDropdown({
               accessibilityLabel="Close"
               style={({ pressed }) => [
                 styles.closeBtn,
-                { backgroundColor: isDark ? '#2A2438' : '#F3F1F6' },
+                { backgroundColor: isDark ? theme.backgroundSelected : '#F3F1F6' },
                 pressed && styles.closeBtnPressed,
               ]}>
               <Ionicons name="close" size={20} color={theme.textSecondary} />

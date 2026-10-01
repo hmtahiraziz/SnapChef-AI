@@ -12,6 +12,7 @@ import {
 
 import { IngredientChip } from '@/components/ui/ingredient-chip';
 import { SnapChef } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type IngredientComposerProps = {
   ingredients: string[];
@@ -24,6 +25,7 @@ export function IngredientComposer({
   onAddMany,
   onRemove,
 }: IngredientComposerProps) {
+  const theme = useTheme();
   const [draft, setDraft] = useState('');
   const [open, setOpen] = useState(true);
   const [focused, setFocused] = useState(false);
@@ -83,9 +85,9 @@ export function IngredientComposer({
   return (
     <View style={styles.root}>
       <View style={styles.headerRow}>
-        <Text style={styles.label}>Ingredients</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Ingredients</Text>
         {ingredients.length > 0 ? (
-          <Text style={styles.count}>{ingredients.length} added</Text>
+          <Text style={[styles.count, { color: theme.textSecondary }]}>{ingredients.length} added</Text>
         ) : null}
       </View>
 
@@ -105,9 +107,21 @@ export function IngredientComposer({
         />
       ) : (
         <View style={styles.composerBlock}>
-          <View style={[styles.composer, focused && styles.composerFocused]}>
-            <View style={styles.leadingIcon}>
-              <Ionicons name="leaf-outline" size={18} color={SnapChef.primary} />
+          <View
+            style={[
+              styles.composer,
+              {
+                backgroundColor: theme.isDark ? theme.field : '#FFFFFF',
+                borderColor: focused ? theme.tint : theme.fieldBorder,
+              },
+              focused && styles.composerFocused,
+            ]}>
+            <View
+              style={[
+                styles.leadingIcon,
+                { backgroundColor: theme.isDark ? theme.backgroundSelected : '#F3F0FF' },
+              ]}>
+              <Ionicons name="leaf-outline" size={18} color={theme.tint} />
             </View>
 
             <TextInput
@@ -115,8 +129,8 @@ export function IngredientComposer({
               value={draft}
               onChangeText={setDraft}
               placeholder="e.g. chicken, onion, tomato"
-              placeholderTextColor="rgba(10, 1, 22, 0.38)"
-              style={styles.input}
+              placeholderTextColor={theme.isDark ? 'rgba(243,242,247,0.35)' : 'rgba(10, 1, 22, 0.38)'}
+              style={[styles.input, { color: theme.text }]}
               onSubmitEditing={submit}
               returnKeyType="done"
               blurOnSubmit={false}
@@ -132,7 +146,7 @@ export function IngredientComposer({
                 accessibilityRole="button"
                 accessibilityLabel="Clear input"
                 style={styles.clearBtn}>
-                <Ionicons name="close-circle" size={18} color={SnapChef.muted} />
+                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
               </Pressable>
             ) : null}
 
@@ -150,7 +164,9 @@ export function IngredientComposer({
                 colors={
                   canSubmit
                     ? [SnapChef.primary, '#603FEF']
-                    : ['#D8D2E8', '#C8C0D8']
+                    : theme.isDark
+                      ? ['#3A3A48', '#2E2E3A']
+                      : ['#D8D2E8', '#C8C0D8']
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -162,7 +178,7 @@ export function IngredientComposer({
           </View>
 
           <View style={styles.footerRow}>
-            <Text style={styles.helper}>
+            <Text style={[styles.helper, { color: theme.textSecondary }]}>
               {hint ?? 'Separate multiple with commas · press Add or Done'}
             </Text>
             <Pressable
@@ -175,8 +191,8 @@ export function IngredientComposer({
               accessibilityRole="button"
               accessibilityLabel="Done adding ingredients"
               style={styles.doneBtn}>
-              <Text style={styles.doneText}>Done</Text>
-              <Ionicons name="chevron-up" size={14} color={SnapChef.primary} />
+              <Text style={[styles.doneText, { color: theme.tint }]}>Done</Text>
+              <Ionicons name="chevron-up" size={14} color={theme.tint} />
             </Pressable>
           </View>
         </View>
@@ -197,13 +213,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: SnapChef.ink,
-    opacity: 0.85,
+    opacity: 0.9,
   },
   count: {
     fontSize: 12,
     fontWeight: '600',
-    color: SnapChef.muted,
   },
   chipRow: {
     flexDirection: 'row',
@@ -222,9 +236,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
     paddingVertical: 6,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E8E4EF',
     shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -232,7 +244,6 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   composerFocused: {
-    borderColor: SnapChef.primary,
     shadowOpacity: 0.14,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -242,7 +253,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 10,
-    backgroundColor: '#F3F0FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -250,7 +260,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
-    color: SnapChef.ink,
     paddingVertical: 8,
     minWidth: 0,
   },
@@ -297,7 +306,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontWeight: '500',
-    color: SnapChef.muted,
     lineHeight: 15,
   },
   doneBtn: {
@@ -310,6 +318,5 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: 12,
     fontWeight: '700',
-    color: SnapChef.primary,
   },
 });

@@ -17,12 +17,12 @@ const TINT_COLORS_LIGHT: Record<GlassTint, [string, string]> = {
 };
 
 const TINT_COLORS_DARK: Record<GlassTint, [string, string]> = {
-  lavender: ['rgba(42,36,56,0.92)', 'rgba(52,44,70,0.88)'],
-  mint: ['rgba(26,50,38,0.95)', 'rgba(16,36,26,0.9)'],
-  cream: ['rgba(50,45,28,0.95)', 'rgba(36,32,20,0.9)'],
-  peach: ['rgba(50,28,38,0.95)', 'rgba(36,20,26,0.9)'],
-  white: ['rgba(28,24,38,0.92)', 'rgba(38,32,50,0.88)'],
-  yellow: ['rgba(60,54,0,0.88)', 'rgba(45,40,0,0.85)'],
+  lavender: ['rgba(36,36,48,0.96)', 'rgba(28,26,40,0.94)'],
+  mint: ['rgba(22,40,32,0.96)', 'rgba(16,30,24,0.94)'],
+  cream: ['rgba(42,38,26,0.96)', 'rgba(30,28,18,0.94)'],
+  peach: ['rgba(42,26,34,0.96)', 'rgba(30,18,24,0.94)'],
+  white: ['rgba(28,28,36,0.96)', 'rgba(22,22,30,0.94)'],
+  yellow: ['rgba(48,42,16,0.92)', 'rgba(34,30,12,0.9)'],
 };
 
 type GlassCardProps = {

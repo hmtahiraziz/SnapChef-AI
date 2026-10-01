@@ -1,6 +1,6 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, TextInput, View, Text } from 'react-native';
 
@@ -8,14 +8,18 @@ import { ScreenContainer } from '@/components/screen-container';
 import { GlassCard } from '@/components/ui/glass-card';
 import { GlassPill } from '@/components/ui/glass-pill';
 import { SettingsRow } from '@/features/settings';
-import { SnapChef, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { clearShoppingList } from '@/services/shoppingListStorage';
+import { writeFavorites } from '@/services/favoritesStorage';
 
 export default function AccountScreen() {
-  const theme = SnapChef;
+  const theme = useTheme();
   const { user } = useUser();
   const { signOut } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
 
@@ -97,29 +101,95 @@ export default function AccountScreen() {
     ]);
   };
 
+  const performDeleteAccount = async () => {
+    if (!user || deleting) return;
+    setDeleting(true);
+    try {
+      await user.delete();
+      try {
+        await writeFavorites([]);
+        await clearShoppingList();
+      } catch {
+        // Local cleanup is best-effort after the Clerk account is gone.
+      }
+      try {
+        await signOut();
+      } catch {
+        // Session may already be invalidated after delete.
+      }
+      router.replace('/sign-in' as never);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Could not delete your account. Please try again.';
+      Alert.alert('Delete failed', message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account?',
+      'This permanently deletes your SnapChef AI account and cloud data tied to it. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Confirm deletion', 'Are you sure you want to permanently delete your account?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Yes, delete',
+                style: 'destructive',
+                onPress: () => {
+                  void performDeleteAccount();
+                },
+              },
+            ]);
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScreenContainer scroll withTabInset={false} gradient edges={['bottom', 'left', 'right']}>
-      <Text style={styles.lead}>Manage how you sign in to SnapChef AI.</Text>
+      <Text style={[styles.lead, { color: theme.textSecondary }]}>Manage how you sign in to SnapChef AI.</Text>
 
       <GlassCard tint="lavender">
         <Text style={styles.section}>Display name</Text>
-        <View style={styles.nameRow}>
-          <TextInput
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="First name"
-            placeholderTextColor={theme.muted}
-            style={styles.input}
-          />
-          <TextInput
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder="Last name"
-            placeholderTextColor={theme.muted}
-            style={styles.input}
-          />
+        <View style={styles.nameStack}>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>First name</Text>
+            <TextInput
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="First name"
+              placeholderTextColor="#6B6575"
+              selectionColor="#8966FA"
+              style={styles.input}
+            />
+          </View>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>Last name</Text>
+            <TextInput
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Last name"
+              placeholderTextColor="#6B6575"
+              selectionColor="#8966FA"
+              style={styles.input}
+            />
+          </View>
         </View>
-        <GlassPill label="Save name" variant="primary" loading={saving} onPress={() => void saveName()} />
+        <GlassPill
+          label="Save name"
+          variant="primary"
+          labelColor="#0A0116"
+          loading={saving}
+          onPress={() => void saveName()}
+        />
         <GlassPill
           label="Change photo"
           variant="outline"
@@ -136,12 +206,22 @@ export default function AccountScreen() {
             value={hasPassword ? 'Enabled' : 'Managed by sign-in provider'}
             onPress={handlePasswordHelp}
           />
+          <SettingsRow
+            label="Privacy Policy"
+            onPress={() => router.push('/legal/privacy' as Href)}
+          />
         </View>
       </GlassCard>
 
       <GlassCard tint="peach" padded={false}>
         <View style={styles.pad}>
           <SettingsRow label="Sign out" destructive onPress={handleSignOut} />
+          <SettingsRow
+            label={deleting ? 'Deleting account…' : 'Delete account'}
+            destructive
+            onPress={deleting ? undefined : handleDeleteAccount}
+            showChevron={!deleting}
+          />
         </View>
       </GlassCard>
     </ScreenContainer>
@@ -149,20 +229,36 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  lead: { fontSize: 14, color: SnapChef.muted, marginBottom: Spacing.one },
-  section: { fontSize: 13, fontWeight: '700', color: SnapChef.ink },
-  nameRow: { flexDirection: 'row', gap: 10 },
+  lead: { fontSize: 14, marginBottom: Spacing.one },
+  section: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0A0116',
+    letterSpacing: 0.2,
+  },
+  nameStack: {
+    gap: Spacing.three,
+  },
+  fieldBlock: {
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0A0116',
+  },
   input: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: '100%',
+    backgroundColor: '#F3F1F6',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: SnapChef.fieldBorder,
+    borderWidth: 1.5,
+    borderColor: '#E8E4EF',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    minHeight: 48,
-    color: SnapChef.ink,
+    minHeight: 52,
     fontSize: 15,
+    fontWeight: '500',
+    color: '#0A0116',
   },
   pad: { paddingHorizontal: Spacing.three },
 });

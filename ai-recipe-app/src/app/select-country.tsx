@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   ctaWrap: {
     marginTop: 12,
-    borderRadius: 999,
+    borderRadius: 28,
     shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     minHeight: 56,
-    borderRadius: 999,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -6,23 +6,25 @@ from app.models.vision import ExtractedIngredient, VisionExtractResponse
 from app.services.llm_parsing import parse_json_object
 from app.services.openai_client import get_openai_client
 
-VISION_PROMPT = """You are a food vision assistant for a home cooking app.
+VISION_PROMPT = """You are the vision engine for SnapChef AI, a professional home-cooking app.
 
-Identify edible food ingredients clearly visible in this photo (fridge, pantry, counter, or plate).
+Identify edible food ingredients clearly visible in this photo (fridge, pantry, counter, cutting board, or plate).
 
 Rules:
-- Include only real food ingredients a person would cook with.
-- Ignore appliances, utensils, packaging text, brand logos, people, and non-food objects.
-- Prefer simple, familiar ingredient names (e.g. "tomato", "chicken", "onion", "yogurt").
+- Include only real cookable ingredients.
+- Ignore appliances, utensils, packaging text, brand logos, people, pets, and non-food objects.
+- Prefer simple, familiar grocery names (e.g. "Tomato", "Chicken", "Onion", "Yogurt").
+- Capitalize the first letter of each ingredient name.
 - Do not invent items that are not visibly present.
 - Deduplicate near-identical names (keep one canonical name).
+- If confidence is unclear, still include the item only when you are reasonably sure.
 - If nothing edible is visible, return empty lists.
 
 Return JSON only with this exact shape:
 {
   "items": [
-    {"name": "tomato", "confidence": 0.92},
-    {"name": "onion", "confidence": 0.8}
+    {"name": "Tomato", "confidence": 0.92},
+    {"name": "Onion", "confidence": 0.8}
   ]
 }
 

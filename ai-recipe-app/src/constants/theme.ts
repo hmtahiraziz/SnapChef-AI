@@ -1,5 +1,5 @@
 /**
- * SnapChef AI design tokens — aligned with auth/onboarding lavender language.
+ * SnapChef AI design tokens — lavender brand with a clean light/dark system.
  */
 
 import '@/global.css';
@@ -34,19 +34,31 @@ export const Colors = {
     warning: '#B86E1A',
     gradientStart: '#FAFAFD',
     gradientEnd: '#F0EDF6',
+    field: SnapChef.field,
+    fieldBorder: SnapChef.fieldBorder,
+    iconMuted: 'rgba(10, 1, 22, 0.45)',
+    overlay: 'rgba(10, 1, 22, 0.45)',
+    cardBorder: 'rgba(255, 255, 255, 0.75)',
+    cardHighlight: 'rgba(255, 255, 255, 0.85)',
   },
   dark: {
-    text: '#F5F2FF',
-    background: '#120F1A',
-    backgroundElement: '#1C1826',
-    backgroundSelected: '#2A2438',
-    textSecondary: '#A8A0B8',
-    tint: '#A78BFA',
-    border: '#3A3348',
+    text: '#F3F2F7',
+    background: '#0B0B0F',
+    backgroundElement: '#15151C',
+    backgroundSelected: '#242430',
+    textSecondary: '#9B98A8',
+    tint: '#B49BFF',
+    border: '#2C2C38',
     success: '#6FBF95',
     warning: '#E0A05A',
-    gradientStart: '#120F1A',
-    gradientEnd: '#1E1830',
+    gradientStart: '#0B0B0F',
+    gradientEnd: '#12121A',
+    field: '#1A1A22',
+    fieldBorder: '#2E2E3A',
+    iconMuted: 'rgba(243, 242, 247, 0.45)',
+    overlay: 'rgba(0, 0, 0, 0.58)',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
+    cardHighlight: 'rgba(255, 255, 255, 0.1)',
   },
 } as const;
 
@@ -93,6 +105,20 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+/**
+ * Soft stadium radii — match floating navbar language (not harsh full capsules).
+ */
+export const Radii = {
+  /** Floating tab bar outer pill */
+  nav: 36,
+  /** Primary action pills / CTAs */
+  pill: 28,
+  /** Compact chips / small controls */
+  chip: 20,
+  /** Cards / sheets */
+  card: 28,
 } as const;
 
 /**

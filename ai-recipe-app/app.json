@@ -7,21 +7,21 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "airecipeapp",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSCameraUsageDescription": "Snap photos of ingredients to find recipes.",
         "NSPhotoLibraryUsageDescription": "Choose ingredient photos from your library."
       }
     },
     "android": {
-      "permissions": [
-        "android.permission.CAMERA",
+      "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#1E1633",
+        "backgroundColor": "#2A1F4A",
+        "backgroundImage": "./assets/images/android-icon-background.png",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-foreground.png"
       },
@@ -45,8 +45,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#2A1F4A",
-          "image": "./assets/images/icon.png",
-          "imageWidth": 148,
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 180,
           "resizeMode": "contain"
         }
       ],

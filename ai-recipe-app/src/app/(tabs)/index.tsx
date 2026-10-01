@@ -51,17 +51,15 @@ export default function HomeScreen() {
     openGallery?: string;
   }>();
 
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
   const previewFavorites = favorites.slice(0, 4);
   const tints = ['lavender', 'mint', 'cream', 'peach'] as const;
 
   const craftColors = isDark
-    ? (['#201936', '#161026'] as const)
+    ? (['#1A1A24', '#121218'] as const)
     : (['#EBE5FF', '#C7B5FD'] as const);
-  const craftBorderColor = isDark
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.5)';
-  const wandBgColor = isDark ? '#2C2442' : '#ffffff';
+  const craftBorderColor = isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.5)';
+  const wandBgColor = isDark ? theme.backgroundSelected : '#ffffff';
 
   const openScan = useCallback((source: ScanSource = null) => {
     setInitialAction(source);

@@ -52,7 +52,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export function IngredientChip({ label, onRemove, dashed, onPress }: IngredientChipProps) {
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   if (dashed) {
     return (

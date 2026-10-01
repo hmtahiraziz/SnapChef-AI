@@ -6,7 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { GlassCard } from '@/components/ui/glass-card';
-import { SnapChef, Spacing } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { usePreferences } from '@/context/PreferencesContext';
 import { ProfileHeader } from '@/features/profile';
 import { SettingsRow } from '@/features/settings';
@@ -16,10 +16,10 @@ import { useTheme } from '@/hooks/use-theme';
 export default function SettingsScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
-  const { country, theme: themePreference } = usePreferences();
+  const { country } = usePreferences();
   const [uploading, setUploading] = useState(false);
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
@@ -28,13 +28,6 @@ export default function SettingsScreen() {
     user?.primaryEmailAddress?.emailAddress ||
     'Chef';
   const email = user?.primaryEmailAddress?.emailAddress ?? 'Signed in';
-
-  const themeLabel =
-    themePreference === 'system'
-      ? 'System'
-      : themePreference === 'dark'
-        ? 'Dark'
-        : 'Light';
 
   const uploadAvatar = async () => {
     if (!user) return;
@@ -109,12 +102,11 @@ export default function SettingsScreen() {
             value={country}
             onPress={() => router.push('/preferences/cuisine' as Href)}
           />
-          <SettingsRow
-            label="Appearance"
-            value={themeLabel}
-            onPress={() => router.push('/preferences/appearance' as Href)}
-          />
           <SettingsRow label="Account" onPress={() => router.push('/account' as Href)} />
+          <SettingsRow
+            label="Privacy Policy"
+            onPress={() => router.push('/legal/privacy' as Href)}
+          />
         </View>
       </GlassCard>
 
@@ -143,7 +135,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 999,
+    borderRadius: Radii.pill,
     borderWidth: 1.5,
   },
   signOutText: { color: '#c62828', fontWeight: '700', fontSize: 15 },

@@ -17,7 +17,6 @@ import { getRecipeImageUrl } from '@/utils/recipeImage';
 import { useTheme } from '@/hooks/use-theme';
 
 const PRIMARY = '#8966FA';
-const INK = '#0A0116';
 
 export type RecipeCardTint = 'purple' | 'yellow' | 'green' | 'coral';
 
@@ -59,7 +58,7 @@ export function RecipeResultCard({
 }: RecipeResultCardProps) {
   const heroUri = getRecipeImageUrl({ id: recipeId, title, cuisine, imageUrl });
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   return (
     <Pressable
@@ -108,16 +107,16 @@ export function RecipeResultCard({
 
         <View style={styles.body}>
           <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: isDark ? '#2C2442' : 'rgba(137,102,250,0.1)' }]}>
+            <View style={[styles.badge, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.1)' }]}>
               <Ionicons name="people-outline" size={13} color={PRIMARY} />
               <Text style={[styles.badgeText, { color: theme.text }]}>{servings} servings</Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: isDark ? '#2C2442' : 'rgba(137,102,250,0.1)' }]}>
+            <View style={[styles.badge, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.1)' }]}>
               <Ionicons name="time-outline" size={13} color={PRIMARY} />
               <Text style={[styles.badgeText, { color: theme.text }]}>{timeLabel}</Text>
             </View>
             {difficulty ? (
-              <View style={[styles.badge, styles.badgeAccent, { backgroundColor: isDark ? '#3D3550' : 'rgba(137,102,250,0.18)' }]}>
+              <View style={[styles.badge, styles.badgeAccent, { backgroundColor: isDark ? theme.field : 'rgba(137,102,250,0.18)' }]}>
                 <Ionicons name="flame-outline" size={13} color={theme.text} />
                 <Text style={[styles.badgeText, { color: theme.text }]}>{difficulty}</Text>
               </View>
@@ -125,9 +124,9 @@ export function RecipeResultCard({
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.seeRecipe}>See recipe</Text>
-            <View style={styles.arrowChip}>
-              <Ionicons name="arrow-forward" size={16} color={PRIMARY} />
+            <Text style={[styles.seeRecipe, { color: theme.tint }]}>See recipe</Text>
+            <View style={[styles.arrowChip, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.12)' }]}>
+              <Ionicons name="arrow-forward" size={16} color={theme.tint} />
             </View>
           </View>
         </View>
@@ -137,6 +136,7 @@ export function RecipeResultCard({
 }
 
 export function RecipeCardSkeleton() {
+  const theme = useTheme();
   const opacity = useSharedValue(0.45);
   useEffect(() => {
     opacity.value = withRepeat(
@@ -149,11 +149,20 @@ export function RecipeCardSkeleton() {
 
   return (
     <Animated.View style={[styles.shadow, anim]}>
-      <View style={[styles.card, styles.skeleton]}>
-        <View style={styles.skelHero} />
+      <View
+        style={[
+          styles.card,
+          styles.skeleton,
+          {
+            backgroundColor: theme.isDark ? theme.backgroundElement : '#EDE7FF',
+            borderColor: theme.isDark ? theme.border : 'rgba(137,102,250,0.2)',
+          },
+        ]}
+      >
+        <View style={[styles.skelHero, { backgroundColor: theme.isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.14)' }]} />
         <View style={styles.skelBody}>
-          <View style={styles.skelLine} />
-          <View style={[styles.skelLine, { width: '55%' }]} />
+          <View style={[styles.skelLine, { backgroundColor: theme.isDark ? theme.field : 'rgba(137,102,250,0.15)' }]} />
+          <View style={[styles.skelLine, { width: '55%', backgroundColor: theme.isDark ? theme.field : 'rgba(137,102,250,0.15)' }]} />
         </View>
       </View>
     </Animated.View>
@@ -233,7 +242,6 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: INK,
     textTransform: 'capitalize',
   },
   footer: {
@@ -244,23 +252,19 @@ const styles = StyleSheet.create({
   seeRecipe: {
     fontSize: 15,
     fontWeight: '800',
-    color: PRIMARY,
   },
   arrowChip: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(137,102,250,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   skeleton: {
-    backgroundColor: '#EDE7FF',
-    borderColor: 'rgba(137,102,250,0.2)',
+    overflow: 'hidden',
   },
   skelHero: {
     height: 170,
-    backgroundColor: 'rgba(137,102,250,0.14)',
   },
   skelBody: {
     padding: 16,
@@ -269,7 +273,6 @@ const styles = StyleSheet.create({
   skelLine: {
     height: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(137,102,250,0.15)',
     width: '72%',
   },
 });

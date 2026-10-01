@@ -22,6 +22,12 @@ if (!resolvedApiBaseUrl) {
 export const ENV = {
   apiBaseUrl: resolvedApiBaseUrl,
   clerkPublishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? extra.clerkPublishableKey ?? '') as string,
+  /** Public HTTPS URL for Play Console / Store listing. In-app screen is always available at /legal/privacy. */
+  privacyPolicyUrl: (
+    process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ||
+    (extra.privacyPolicyUrl as string) ||
+    ''
+  ).trim(),
 } as const;
 
 export function hasApiBaseUrl(): boolean {
@@ -30,4 +36,8 @@ export function hasApiBaseUrl(): boolean {
 
 export function hasClerkPublishableKey(): boolean {
   return ENV.clerkPublishableKey.length > 0;
+}
+
+export function hasPrivacyPolicyUrl(): boolean {
+  return ENV.privacyPolicyUrl.length > 0;
 }

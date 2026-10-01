@@ -14,7 +14,7 @@ const THEME_KEY = '@ai_recipe_app/theme_preference';
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   country: DEFAULT_COUNTRY,
-  theme: 'system',
+  theme: 'light',
 };
 
 function isThemePreference(value: string | null): value is ThemePreference {
@@ -31,7 +31,8 @@ export async function getPreferences(): Promise<AppPreferences> {
     return {
       country:
         country && COUNTRIES.includes(country as CountryName) ? country : DEFAULT_COUNTRY,
-      theme: isThemePreference(theme) ? theme : 'system',
+      // Theme preference is retained for storage compatibility; UI is light-only.
+      theme: isThemePreference(theme) ? theme : 'light',
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };
@@ -52,7 +53,7 @@ export async function setPreferenceTheme(theme: ThemePreference): Promise<void> 
 export async function resetPreferences(): Promise<AppPreferences> {
   await Promise.all([
     AsyncStorage.setItem(COUNTRY_KEY, DEFAULT_COUNTRY),
-    AsyncStorage.setItem(THEME_KEY, 'system'),
+    AsyncStorage.setItem(THEME_KEY, 'light'),
   ]);
   return { ...DEFAULT_PREFERENCES };
 }

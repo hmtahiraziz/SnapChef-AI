@@ -56,8 +56,9 @@ function AuthGate() {
   const isOnboarding = useMemo(() => segments[0] === 'onboarding', [segments]);
   const isSelectCountry = useMemo(() => segments[0] === 'select-country', [segments]);
   const isOAuthCallback = useMemo(() => segments[0] === 'oauth-callback', [segments]);
+  const isLegal = useMemo(() => segments[0] === 'legal', [segments]);
   /** Routes signed-out users may stay on while auth is completing. */
-  const isPublicAuthSurface = inAuthGroup || isOnboarding || isOAuthCallback;
+  const isPublicAuthSurface = inAuthGroup || isOnboarding || isOAuthCallback || isLegal;
   const [seenOnboarding, setSeenOnboarding] = useState<boolean | null>(null);
   const [countrySetupDone, setCountrySetupDone] = useState<boolean | null>(null);
 
@@ -222,6 +223,7 @@ function AuthGate() {
       <Stack.Screen name="preferences" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="account" options={{ headerShown: false }} />
+      <Stack.Screen name="legal" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
     </Stack>
   );
@@ -229,9 +231,36 @@ function AuthGate() {
 
 function RootNavigation() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const navTheme = isDark
+    ? {
+        ...DarkTheme,
+        colors: {
+          ...DarkTheme.colors,
+          primary: Colors.dark.tint,
+          background: Colors.dark.background,
+          card: Colors.dark.backgroundElement,
+          text: Colors.dark.text,
+          border: Colors.dark.border,
+          notification: Colors.dark.tint,
+        },
+      }
+    : {
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          primary: Colors.light.tint,
+          background: Colors.light.background,
+          card: Colors.light.backgroundElement,
+          text: Colors.light.text,
+          border: Colors.light.border,
+          notification: Colors.light.tint,
+        },
+      };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navTheme}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <FavoritesProvider>
         <ShoppingListProvider>
           <AnimatedSplashOverlay />

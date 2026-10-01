@@ -24,10 +24,10 @@ export function ProfileHeader({
   uploading = false,
 }: ProfileHeaderProps) {
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   const colors = isDark
-    ? (['rgba(42,36,56,0.9)', 'rgba(28,24,38,0.92)'] as const)
+    ? (['rgba(36,36,48,0.94)', 'rgba(22,22,30,0.96)'] as const)
     : (['rgba(216,207,255,0.9)', 'rgba(255,255,255,0.92)'] as const);
 
   return (

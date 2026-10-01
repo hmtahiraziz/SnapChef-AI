@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 28,
   },
   actionPressed: {
     opacity: 0.9,

@@ -117,7 +117,7 @@ function EditItemModal({
   const [unit, setUnit] = useState(item?.unit ?? '');
   const [name, setName] = useState(item?.name ?? '');
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   // sync when item changes
   const prevId = useRef<string | null>(null);
@@ -135,8 +135,8 @@ function EditItemModal({
           style={[
             modalStyles.sheet,
             {
-              backgroundColor: isDark ? '#1C1826' : '#fff',
-              borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'transparent',
+              backgroundColor: isDark ? theme.backgroundElement : '#fff',
+              borderTopColor: isDark ? theme.cardBorder : 'transparent',
               borderTopWidth: isDark ? 1 : 0,
             },
           ]}
@@ -197,7 +197,7 @@ function EditItemModal({
               style={[
                 modalStyles.btn,
                 modalStyles.cancelBtn,
-                { backgroundColor: isDark ? '#2A2438' : '#F3F1F6' },
+                { backgroundColor: isDark ? theme.backgroundSelected : '#F3F1F6' },
               ]}
             >
               <Text style={[modalStyles.cancelText, { color: theme.text }]}>Cancel</Text>
@@ -238,7 +238,7 @@ export default function ShoppingScreen() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const theme = useTheme();
-  const isDark = theme.text === '#F5F2FF';
+  const { isDark } = theme;
 
   const inputRef = useRef<TextInput>(null);
 
@@ -487,7 +487,7 @@ export default function ShoppingScreen() {
               <Text style={[styles.groupTitle, { color: theme.text }, allChecked && styles.groupTitleDone]}>
                 {group.title}
               </Text>
-              <Text style={[styles.groupCount, { backgroundColor: isDark ? '#2A2438' : 'rgba(137,102,250,0.12)', color: theme.tint }]}>
+              <Text style={[styles.groupCount, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.12)', color: theme.tint }]}>
                 {group.items.length}
               </Text>
               <Ionicons
@@ -612,8 +612,8 @@ export default function ShoppingScreen() {
             style={[
               menuStyles.sheet,
               {
-                backgroundColor: isDark ? '#1C1826' : '#fff',
-                borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'transparent',
+                backgroundColor: isDark ? theme.backgroundElement : '#fff',
+                borderTopColor: isDark ? theme.cardBorder : 'transparent',
                 borderTopWidth: isDark ? 1 : 0,
               },
             ]}
@@ -630,7 +630,7 @@ export default function ShoppingScreen() {
             <Pressable
               style={({ pressed }) => [
                 menuStyles.actionRow,
-                pressed && { backgroundColor: isDark ? '#2A2438' : '#F7F5FF' },
+                pressed && { backgroundColor: isDark ? theme.backgroundSelected : '#F7F5FF' },
               ]}
               onPress={() => {
                 const target = menuTarget;
@@ -657,7 +657,7 @@ export default function ShoppingScreen() {
             <Pressable
               style={({ pressed }) => [
                 menuStyles.actionRow,
-                pressed && { backgroundColor: isDark ? '#2A2438' : '#F7F5FF' },
+                pressed && { backgroundColor: isDark ? theme.backgroundSelected : '#F7F5FF' },
               ]}
               onPress={() => {
                 const target = menuTarget;

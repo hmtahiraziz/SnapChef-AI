@@ -5,11 +5,13 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { SnapChef } from '@/constants/theme';
+import { Radii, SnapChef } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type GlassPillProps = {
   label: string;
@@ -19,7 +21,25 @@ type GlassPillProps = {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  /** Override label/spinner color (e.g. black on primary). */
+  labelColor?: string;
+  /** Stretch to parent width (common on narrow phones). */
+  fullWidth?: boolean;
 };
+
+function usePillMetrics() {
+  const { width } = useWindowDimensions();
+  const isTiny = width < 340;
+  const isCompact = width < 380;
+  const isTablet = width >= 768;
+
+  return {
+    minHeight: isTiny ? 48 : isCompact ? 50 : isTablet ? 56 : 52,
+    paddingHorizontal: isTiny ? 16 : isCompact ? 18 : isTablet ? 26 : 22,
+    fontSize: isTiny ? 14 : isCompact ? 15 : 16,
+    radius: Radii.pill,
+  };
+}
 
 export function GlassPill({
   label,
@@ -29,11 +49,28 @@ export function GlassPill({
   loading = false,
   disabled = false,
   style,
+  labelColor: labelColorProp,
+  fullWidth = false,
 }: GlassPillProps) {
+  const theme = useTheme();
+  const metrics = usePillMetrics();
   const isDisabled = disabled || loading;
 
+  const baseStyle = [
+    styles.base,
+    {
+      minHeight: metrics.minHeight,
+      paddingHorizontal: metrics.paddingHorizontal,
+      borderRadius: metrics.radius,
+      alignSelf: fullWidth ? ('stretch' as const) : ('auto' as const),
+      width: fullWidth ? ('100%' as const) : undefined,
+    },
+  ];
+
   if (variant === 'primary' || variant === 'ink') {
-    const bg = variant === 'primary' ? SnapChef.primary : SnapChef.ink;
+    const bg = variant === 'primary' ? SnapChef.primary : theme.isDark ? '#F3F2F7' : SnapChef.ink;
+    const labelColor =
+      labelColorProp ?? (variant === 'ink' && theme.isDark ? SnapChef.ink : '#FFFFFF');
     return (
       <Pressable
         onPress={onPress}
@@ -41,17 +78,19 @@ export function GlassPill({
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => [
-          styles.base,
+          ...baseStyle,
           { backgroundColor: bg, opacity: isDisabled ? 0.5 : pressed ? 0.88 : 1 },
           styles.glow,
           style,
         ]}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={labelColor} />
         ) : (
           <View style={styles.row}>
             {icon}
-            <Text style={styles.labelLight}>{label}</Text>
+            <Text style={[styles.label, { color: labelColor, fontSize: metrics.fontSize }]}>
+              {label}
+            </Text>
           </View>
         )}
       </Pressable>
@@ -66,9 +105,13 @@ export function GlassPill({
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => [
-          styles.base,
+          ...baseStyle,
           styles.outline,
-          { opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1 },
+          {
+            borderColor: SnapChef.fieldBorder,
+            backgroundColor: SnapChef.field,
+            opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
+          },
           style,
         ]}>
         {loading ? (
@@ -76,7 +119,9 @@ export function GlassPill({
         ) : (
           <View style={styles.row}>
             {icon}
-            <Text style={styles.labelDark}>{label}</Text>
+            <Text style={[styles.label, { color: SnapChef.ink, fontSize: metrics.fontSize }]}>
+              {label}
+            </Text>
           </View>
         )}
       </Pressable>
@@ -89,18 +134,34 @@ export function GlassPill({
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [{ opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1 }, style]}>
+      style={({ pressed }) => [
+        fullWidth && styles.fullWidth,
+        { opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1 },
+        style,
+      ]}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.72)', 'rgba(216,207,255,0.45)']}
+        colors={
+          theme.isDark
+            ? ['rgba(36,36,48,0.92)', 'rgba(28,26,40,0.88)']
+            : ['rgba(255,255,255,0.92)', 'rgba(247,243,255,0.88)']
+        }
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.base, styles.glassBorder]}>
+        end={{ x: 1, y: 0 }}
+        style={[
+          ...baseStyle,
+          styles.glassBorder,
+          {
+            borderColor: theme.isDark ? theme.cardBorder : 'rgba(255,255,255,0.75)',
+          },
+        ]}>
         {loading ? (
-          <ActivityIndicator color={SnapChef.ink} />
+          <ActivityIndicator color={theme.text} />
         ) : (
           <View style={styles.row}>
             {icon}
-            <Text style={styles.labelDark}>{label}</Text>
+            <Text style={[styles.label, { color: theme.text, fontSize: metrics.fontSize }]}>
+              {label}
+            </Text>
           </View>
         )}
       </LinearGradient>
@@ -110,41 +171,33 @@ export function GlassPill({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
-    borderRadius: 999,
-    paddingHorizontal: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fullWidth: {
+    alignSelf: 'stretch',
+    width: '100%',
+  },
   glassBorder: {
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.8)',
   },
   outline: {
     borderWidth: 1.5,
-    borderColor: SnapChef.fieldBorder,
-    backgroundColor: SnapChef.white,
   },
   glow: {
     shadowColor: SnapChef.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 4,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
-  labelLight: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  labelDark: {
-    color: SnapChef.ink,
-    fontSize: 15,
+  label: {
     fontWeight: '700',
   },
 });
