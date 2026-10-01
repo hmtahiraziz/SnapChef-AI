@@ -90,6 +90,8 @@ def _normalize_recipe(recipe: Recipe, country: str, index: int) -> Recipe:
     steps = [_clean_step(step, i) for i, step in enumerate(recipe.steps) if step and step.strip()]
     if not steps:
         steps = ["Prepare the ingredients.", "Cook until done.", "Serve hot."]
+    else:
+        steps = steps[:6]
 
     ingredients = _clean_ingredient_list(recipe.ingredients)
     if not ingredients:
@@ -118,77 +120,52 @@ def _normalize_recipe(recipe: Recipe, country: str, index: int) -> Recipe:
 def _recipe_prompt(max_recipes: int, country: str) -> str:
     pakistan_rules = ""
     if country.strip().lower() in {"pakistan", "pakistani"}:
-        pakistan_rules = """
-Pakistan-specific rules:
-- Prefer authentic Pakistani home cooking (karahi, salan, bhuna, pulao-style, omelette, stir-fries).
-- Prefer local spices: cumin, coriander, turmeric, red chili, garam masala, black pepper, ginger, garlic, green chilies.
-- Use metric-friendly household measures (tsp, tbsp, cup, g, ml, whole).
-- Keep ingredient names familiar to Pakistani home cooks.
-- Assume a normal household kitchen (stovetop, basic pans).
-"""
+        pakistan_rules = (
+            "Pakistan: prefer home-style Pakistani dishes; common spices "
+            "(cumin, coriander, turmeric, chili, garam masala, ginger, garlic); "
+            "household units (tsp, tbsp, cup, g, ml, whole)."
+        )
 
-    return f"""You are SnapChef AI — a professional culinary assistant for a consumer cooking app.
+    return f"""You are SnapChef AI. Return cook-ready home recipes as JSON only.
 
-Generate publish-ready recipes that feel like a trusted cookbook: clear, realistic, appetizing, and easy to cook at home.
-
-Primary country/cuisine context: {country}
+Country/cuisine: {country}
 {pakistan_rules}
-Ingredient integrity (critical):
-- Use ONLY the user's available ingredients in the main "ingredients" array.
-- Put anything else required to finish the dish in "missingIngredients" (salt, oil, spices, water, etc. if not provided).
-- Put nice-to-have upgrades in "optionalIngredients".
-- Never pretend a missing item is already available.
-- Prefer recipes that maximize use of provided ingredients and minimize missing staples when possible.
 
-Quality bar for Play Store users:
-- Titles must be specific and appetizing (not "Recipe 1").
-- Description: 1 polished sentence (max ~140 characters) explaining flavor/style.
-- Difficulty: easy | medium | hard (honest for home cooks).
-- Times: realistic prepTimeMinutes and cookTimeMinutes.
-- Servings: sensible default (usually 2–4).
-- Steps: 5–10 clear, actionable steps. One action per step. Include heat level, timing cues, and doneness checks when useful.
-- Quantities: always include quantity + unit when practical.
-- Vary the {max_recipes} recipes (different methods or profiles), not near-duplicates.
-- Prefer complete meals over vague snacks unless ingredients only support snacks.
+Rules:
+- Main "ingredients" = ONLY items from the user's available list (with quantity/unit).
+- Extra required items go in "missingIngredients"; upgrades in "optionalIngredients".
+- Up to {max_recipes} distinct recipes. Appetizing titles. 1 short description sentence.
+- difficulty: easy|medium|hard. Realistic prep/cook minutes. Servings 2–4.
+- steps: 4–6 short actionable steps each. Be concise.
 
-Return JSON only with this exact shape:
+JSON shape:
 {{
   "recipes": [
     {{
-      "id": "stable-kebab-case-id",
+      "id": "kebab-case-id",
       "title": "Recipe name",
       "servings": 2,
       "prepTimeMinutes": 10,
       "cookTimeMinutes": 20,
       "country": "{country}",
-      "cuisine": "Cuisine label",
-      "description": "One short polished sentence about the dish.",
+      "cuisine": "Cuisine",
+      "description": "One short sentence.",
       "difficulty": "easy",
-      "ingredients": [
-        {{"name": "Onion", "quantity": "1", "unit": "whole"}}
-      ],
-      "missingIngredients": [
-        {{"name": "Salt", "quantity": "1", "unit": "tsp"}}
-      ],
-      "optionalIngredients": [
-        {{"name": "Fresh coriander", "quantity": "2", "unit": "tbsp"}}
-      ],
-      "steps": [
-        "Heat oil in a pan over medium heat.",
-        "Add onions and cook until soft and lightly golden."
-      ]
+      "ingredients": [{{"name": "Onion", "quantity": "1", "unit": "whole"}}],
+      "missingIngredients": [{{"name": "Salt", "quantity": "1", "unit": "tsp"}}],
+      "optionalIngredients": [],
+      "steps": ["Step one.", "Step two."]
     }}
   ]
 }}
 
-Hard rules:
-- Suggest up to {max_recipes} recipes
-- servings must be a positive integer
-- difficulty must be one of: easy, medium, hard
-- Never return markdown, code fences, or commentary
-- Never return plain text
-- Only valid JSON
+No markdown. JSON only.
 """
+
+
+def _max_tokens_for_count(max_recipes: int) -> int:
+    # Keep output budget tight so generation finishes faster.
+    return min(2400, 900 + max_recipes * 550)
 
 
 async def generate_recipes(
@@ -203,21 +180,22 @@ async def generate_recipes(
     client = get_openai_client()
     ingredient_text = ", ".join(item.strip() for item in ingredients if item.strip())
     country_text = country.strip()
+    recipe_count = max(1, min(max_recipes, 5))
 
     try:
         response = await client.chat.completions.create(
             model=settings.openai_model_recipes,
             response_format={"type": "json_object"},
-            temperature=0.55,
-            max_tokens=4200,
+            temperature=0.4,
+            max_tokens=_max_tokens_for_count(recipe_count),
             messages=[
-                {"role": "system", "content": _recipe_prompt(max_recipes, country_text)},
+                {"role": "system", "content": _recipe_prompt(recipe_count, country_text)},
                 {
                     "role": "user",
                     "content": (
                         f"Country: {country_text}\n"
                         f"Available ingredients: {ingredient_text}\n"
-                        f"Return up to {max_recipes} distinct, cook-ready recipes optimized for home kitchens."
+                        f"Return {recipe_count} recipes. Keep steps short."
                     ),
                 },
             ],
@@ -240,7 +218,7 @@ async def generate_recipes(
 
     normalized: list[Recipe] = []
     seen_ids: set[str] = set()
-    for index, recipe in enumerate(validated.recipes[:max_recipes]):
+    for index, recipe in enumerate(validated.recipes[:recipe_count]):
         cleaned = _normalize_recipe(recipe, country_text, index)
         # Guarantee unique ids for navigation/favorites.
         base_id = cleaned.id
