@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { extractIngredientsFromImage } from '../services/visionApi';
 import type { CapturePhase, ExtractedIngredient, PendingCapture } from '../types';
@@ -11,17 +11,14 @@ type CaptureSource = 'camera' | 'library';
 async function prepareCapture(uri: string): Promise<PendingCapture> {
   const manipulated = await ImageManipulator.manipulateAsync(
     uri,
-    [{ resize: { width: 1024 } }],
-    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    [{ resize: { width: 1280 } }],
+    { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG },
   );
-
-  if (!manipulated.base64) {
-    throw new Error('Could not read the selected photo. Please try again.');
-  }
 
   return {
     uri: manipulated.uri,
-    base64: manipulated.base64,
+    mimeType: 'image/jpeg',
+    fileName: `scan-${Date.now()}.jpg`,
   };
 }
 
@@ -31,8 +28,11 @@ export function useIngredientCapture() {
   const [extracted, setExtracted] = useState<ExtractedIngredient[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [permissionKind, setPermissionKind] = useState<'camera' | 'library' | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const resetCapture = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setPhase('idle');
     setPending(null);
     setExtracted([]);
@@ -83,23 +83,46 @@ export function useIngredientCapture() {
   const pickPhoto = useCallback(async () => pickFromSource('library'), [pickFromSource]);
 
   const retake = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setPending(null);
     setExtracted([]);
     setError(null);
     setPhase('idle');
   }, []);
 
+  const cancelScan = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setError(null);
+    setPhase(pending ? 'preview' : 'idle');
+  }, [pending]);
+
   const scanPendingPhoto = useCallback(async () => {
-    if (!pending?.base64) {
+    if (!pending?.uri) {
       setError('No photo ready to scan. Take or choose a photo first.');
       return;
     }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setError(null);
     setPhase('extracting');
 
     try {
-      const items = await extractIngredientsFromImage(pending.base64);
+      const items = await extractIngredientsFromImage({
+        uri: pending.uri,
+        mimeType: pending.mimeType,
+        fileName: pending.fileName,
+        signal: controller.signal,
+      });
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
       setExtracted(
         items.map((item) => ({
           ...item,
@@ -108,12 +131,24 @@ export function useIngredientCapture() {
       );
       setPhase('review');
     } catch (scanError) {
+      if (controller.signal.aborted) {
+        setPhase(pending ? 'preview' : 'idle');
+        return;
+      }
       const message =
         scanError instanceof Error
           ? scanError.message
           : 'Something went wrong while reading the photo.';
+      if (message === 'Scan cancelled.') {
+        setPhase(pending ? 'preview' : 'idle');
+        return;
+      }
       setError(message);
       setPhase('preview');
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
     }
   }, [pending]);
 
@@ -163,6 +198,7 @@ export function useIngredientCapture() {
     snapPhoto,
     pickPhoto,
     scanPendingPhoto,
+    cancelScan,
     toggleExtracted,
     renameExtracted,
     removeExtracted,

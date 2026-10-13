@@ -157,14 +157,11 @@ export default function HomeScreen() {
               onRemove={removeIngredient}
             />
 
-            <View style={styles.sectionBlock}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Cuisine</Text>
-              <CountryDropdown
-                value={country}
-                onChange={(next) => void setCountry(next)}
-                maxListHeight={200}
-              />
-            </View>
+            <CountryDropdown
+              value={country}
+              onChange={(next) => void setCountry(next)}
+              maxListHeight={200}
+            />
 
             {showCamera ? (
               <IngredientCapture
@@ -296,7 +293,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#8966FA',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -316,7 +313,7 @@ const styles = StyleSheet.create({
   craftCard: {
     borderRadius: 28,
     overflow: 'hidden',
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   craftInner: {
     padding: 20,
@@ -345,14 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 20,
-  },
-  sectionBlock: {
-    gap: 8,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    opacity: 0.8,
   },
   warning: {
     textAlign: 'center',

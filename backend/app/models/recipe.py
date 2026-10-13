@@ -34,8 +34,10 @@ class Recipe(BaseModel):
 
 class GenerateRecipesRequest(BaseModel):
     ingredients: list[str] = Field(min_length=1)
-    max_recipes: int = Field(default=2, ge=1, le=5)
+    max_recipes: int = Field(default=1, ge=1, le=5)
     country: str = Field(min_length=2)
+    # Titles already shown — model should return different recipes.
+    exclude_titles: list[str] = Field(default_factory=list)
 
 
 class GenerateRecipesResponse(BaseModel):

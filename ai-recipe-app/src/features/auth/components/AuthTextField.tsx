@@ -6,7 +6,10 @@ type AuthTextFieldProps = TextInputProps & {
   label: string;
   rightLabel?: string;
   onRightLabelPress?: () => void;
+  /** @deprecated Prefer `flex` for row layouts */
   containerClassName?: string;
+  /** Use in horizontal rows so fields share space without overflowing */
+  flex?: boolean;
   showPasswordToggle?: boolean;
   passwordVisible?: boolean;
   onTogglePassword?: () => void;
@@ -17,6 +20,7 @@ export function AuthTextField({
   rightLabel,
   onRightLabelPress,
   containerClassName,
+  flex,
   secureTextEntry,
   showPasswordToggle,
   passwordVisible,
@@ -24,9 +28,10 @@ export function AuthTextField({
   ...rest
 }: AuthTextFieldProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const useFlex = flex || Boolean(containerClassName);
 
   return (
-    <View style={[styles.container, containerClassName ? { flex: 1 } : null]}>
+    <View style={[styles.container, useFlex ? styles.flexItem : null]}>
       <View style={styles.labelRow}>
         <Text style={styles.label}>{label}</Text>
         {rightLabel && onRightLabelPress ? (
@@ -79,7 +84,12 @@ export function AuthTextField({
 const styles = StyleSheet.create({
   container: {
     gap: 6,
-    width: '100%',
+    alignSelf: 'stretch',
+  },
+  flexItem: {
+    flex: 1,
+    minWidth: 0,
+    alignSelf: 'auto',
   },
   labelRow: {
     flexDirection: 'row',

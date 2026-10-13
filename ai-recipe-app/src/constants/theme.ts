@@ -122,9 +122,8 @@ export const Radii = {
 } as const;
 
 /**
- * Extra inset for floating liquid-glass tab bar.
- * Sized for the protruding center scan control + home-indicator clearance.
- * Narrow phones use a slightly smaller bar; keep this on the generous side.
+ * Extra inset for the floating pill tab bar (labels + raised AI center + safe area).
+ * Keep slightly generous so scroll content never sits under the bar / system nav.
  */
-export const BottomTabInset = Platform.select({ ios: 96, android: 104 }) ?? 96;
+export const BottomTabInset = Platform.select({ ios: 112, android: 120 }) ?? 112;
 export const MaxContentWidth = 920;

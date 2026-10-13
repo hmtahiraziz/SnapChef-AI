@@ -11,6 +11,8 @@ type SettingsRowProps = {
   onPress?: () => void;
   destructive?: boolean;
   showChevron?: boolean;
+  /** Hide the bottom rule (use on the last row inside a card). */
+  showDivider?: boolean;
 };
 
 export function SettingsRow({
@@ -19,6 +21,7 @@ export function SettingsRow({
   onPress,
   destructive = false,
   showChevron = true,
+  showDivider = true,
 }: SettingsRowProps) {
   const theme = useTheme();
 
@@ -26,7 +29,10 @@ export function SettingsRow({
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={[styles.row, { borderBottomColor: theme.border }]}>
+      style={[
+        styles.row,
+        showDivider && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+      ]}>
       <View style={styles.copy}>
         <ThemedText type="smallBold" style={destructive ? { color: '#c62828' } : undefined}>
           {label}
@@ -52,7 +58,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
     paddingVertical: Spacing.two,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   copy: {
     flex: 1,

@@ -38,7 +38,7 @@ export function RecipeGlassCard({
       <Pressable onPress={onPress} style={styles.pressable} accessibilityRole="button">
         <View style={styles.cardContent}>
           {/* Circular food plate image */}
-          <View style={[styles.imageContainer, { backgroundColor: theme.backgroundSelected, borderColor: theme.border }]}>
+          <View style={[styles.imageContainer, { backgroundColor: theme.backgroundSelected }]}>
             <Image source={{ uri: heroUri }} style={styles.foodImage} contentFit="cover" transition={200} />
           </View>
 
@@ -89,17 +89,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     gap: 14, 
   },
-  imageContainer: { 
-    width: 68, 
-    height: 68, 
-    borderRadius: 34, 
-    overflow: 'hidden', 
-    borderWidth: 2, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+  imageContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    overflow: 'hidden',
   },
   foodImage: { 
     width: '100%', 

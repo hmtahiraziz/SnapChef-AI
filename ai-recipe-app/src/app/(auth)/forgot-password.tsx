@@ -10,14 +10,21 @@ import {
   BRAND_NAME,
   getClerkErrorMessage,
   isValidEmail,
+  requestPasswordResetEmailCode,
 } from '@/features/auth';
+
+function readParam(value: string | string[] | undefined): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return '';
+}
 
 export default function ForgotPasswordScreen() {
   const { signIn, isLoaded } = useSignIn();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
-  const initialEmail = typeof params.email === 'string' ? params.email : '';
+  const returnTo = readParam(params.returnTo) || undefined;
+  const initialEmail = readParam(params.email);
 
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
@@ -25,8 +32,8 @@ export default function ForgotPasswordScreen() {
   const [sent, setSent] = useState(false);
 
   const onRequestReset = useCallback(async () => {
-    if (!isLoaded) return;
-    const identifier = email.trim();
+    if (!isLoaded || !signIn) return;
+    const identifier = email.trim().toLowerCase();
     if (!identifier) {
       setError('Please enter your email address.');
       return;
@@ -38,10 +45,7 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     setError('');
     try {
-      await signIn.create({
-        strategy: 'reset_password_email_code',
-        identifier,
-      });
+      await requestPasswordResetEmailCode(signIn, identifier);
       setSent(true);
       router.push({
         pathname: '/reset-password',
@@ -61,7 +65,7 @@ export default function ForgotPasswordScreen() {
     });
 
   return (
-    <AuthScreenShell compact>
+    <AuthScreenShell compact showBackButton>
       <Text style={styles.title}>Forgot Password</Text>
       <Text style={styles.subtitle}>
         Enter your email and we&apos;ll send a reset code for your {BRAND_NAME} account.
@@ -75,15 +79,17 @@ export default function ForgotPasswordScreen() {
           onChangeText={(v) => {
             setEmail(v);
             setError('');
+            setSent(false);
           }}
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
+          textContentType="emailAddress"
           accessibilityLabel="Email address"
         />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        {sent ? (
+        {sent && !error ? (
           <Text style={styles.success}>Code sent — check your inbox.</Text>
         ) : null}
 

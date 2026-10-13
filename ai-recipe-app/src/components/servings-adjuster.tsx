@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   button: {
     width: 44,
     height: 44,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',

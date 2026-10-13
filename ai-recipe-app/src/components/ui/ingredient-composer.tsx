@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
     paddingVertical: 6,
     borderRadius: 18,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

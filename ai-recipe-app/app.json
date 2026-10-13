@@ -28,6 +28,15 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.technology726.airecipeapp"
     },
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
+    },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"

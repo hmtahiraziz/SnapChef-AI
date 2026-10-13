@@ -45,19 +45,10 @@ export function GlassCard({ children, tint = 'lavender', style, padded = true }:
         style={[
           styles.card,
           {
-            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.75)',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(137,102,250,0.12)',
           },
         ]}
       >
-        <View
-          style={[
-            styles.highlight,
-            {
-              borderTopColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-            },
-          ]}
-          pointerEvents="none"
-        />
         <View style={padded ? styles.pad : undefined}>{children}</View>
       </LinearGradient>
     </View>
@@ -75,13 +66,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 28,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-  },
-  highlight: {
-    ...StyleSheet.absoluteFillObject,
-    borderTopWidth: 1,
-    opacity: 0.6,
   },
   pad: {
     padding: Spacing.four,

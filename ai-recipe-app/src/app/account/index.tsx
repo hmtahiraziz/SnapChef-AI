@@ -209,6 +209,7 @@ export default function AccountScreen() {
           <SettingsRow
             label="Privacy Policy"
             onPress={() => router.push('/legal/privacy' as Href)}
+            showDivider={false}
           />
         </View>
       </GlassCard>
@@ -221,6 +222,7 @@ export default function AccountScreen() {
             destructive
             onPress={deleting ? undefined : handleDeleteAccount}
             showChevron={!deleting}
+            showDivider={false}
           />
         </View>
       </GlassCard>
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#F3F1F6',
     borderRadius: 16,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E8E4EF',
     paddingHorizontal: 14,
     paddingVertical: 12,

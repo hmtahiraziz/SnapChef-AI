@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   border: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 22,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.9)',
   },
 });

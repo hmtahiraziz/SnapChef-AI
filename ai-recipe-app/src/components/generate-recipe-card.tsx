@@ -88,8 +88,6 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 16,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.35)',
   },
   glow: {
     position: 'absolute',

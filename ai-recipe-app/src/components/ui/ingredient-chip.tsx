@@ -85,7 +85,6 @@ export function IngredientChip({ label, onRemove, dashed, onPress }: IngredientC
         styles.chip,
         {
           backgroundColor: isDark ? 'rgba(28, 24, 38, 0.85)' : 'rgba(255, 255, 255, 0.88)',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.55)',
         },
       ]}
     >
@@ -122,8 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.55)',
+    borderWidth: 0,
     paddingVertical: 8,
     paddingLeft: 12,
     paddingRight: 8,
@@ -166,15 +164,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingLeft: 6,
     borderRadius: 22,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderStyle: 'dashed',
     borderColor: 'rgba(137, 102, 250, 0.45)',
     backgroundColor: 'rgba(255, 255, 255, 0.78)',
-    shadowColor: SnapChef.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
   },
   dashedPressed: {
     opacity: 0.88,

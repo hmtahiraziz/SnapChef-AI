@@ -6,7 +6,8 @@ export type ExtractedIngredient = {
 
 export type PendingCapture = {
   uri: string;
-  base64: string;
+  mimeType?: string;
+  fileName?: string;
 };
 
 export type CapturePhase = 'idle' | 'preview' | 'extracting' | 'review';

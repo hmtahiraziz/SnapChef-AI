@@ -81,7 +81,7 @@ export function ProfileHeader({
 const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.four,
     overflow: 'hidden',
   },
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     backgroundColor: SnapChef.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   copy: { flex: 1, gap: 2 },
   greeting: { fontSize: 13, fontWeight: '500' },

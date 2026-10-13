@@ -207,10 +207,7 @@ export function CountryDropdown({
           <View
             style={[
               styles.triggerFlagBadge,
-              {
-                backgroundColor: isDark ? theme.field : '#EDE7FF',
-                borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.12)',
-              },
+              { backgroundColor: isDark ? theme.field : '#EDE7FF' },
             ]}>
             <Text style={styles.triggerFlagEmoji}>{value ? flag : '🌍'}</Text>
           </View>
@@ -233,10 +230,7 @@ export function CountryDropdown({
           <View
             style={[
               styles.triggerChevron,
-              {
-                backgroundColor: isDark ? theme.field : '#F3F0FF',
-                borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.1)',
-              },
+              { backgroundColor: isDark ? theme.field : '#F3F0FF' },
             ]}>
             <Ionicons name="chevron-expand-outline" size={16} color={theme.tint} />
           </View>
@@ -361,7 +355,7 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 64,
     borderRadius: 20,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(137, 102, 250, 0.18)',
     overflow: 'hidden',
     paddingVertical: 12,
@@ -383,8 +377,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(137, 102, 250, 0.12)',
   },
   triggerFlagEmoji: {
     fontSize: 22,
@@ -424,8 +416,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(137, 102, 250, 0.1)',
   },
 
   /* ── Modal ── */
@@ -490,7 +480,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E8E4EF',
     paddingHorizontal: 12,
     height: 46,
@@ -600,7 +590,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#DCD7E4',
     alignItems: 'center',
     justifyContent: 'center',

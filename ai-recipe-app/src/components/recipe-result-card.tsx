@@ -12,11 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GlassIconButton } from '@/components/glass-icon-button';
+import { Radii, SnapChef } from '@/constants/theme';
 import { getRecipeImageUrl } from '@/utils/recipeImage';
-
 import { useTheme } from '@/hooks/use-theme';
-
-const PRIMARY = '#8966FA';
 
 export type RecipeCardTint = 'purple' | 'yellow' | 'green' | 'coral';
 
@@ -38,6 +36,10 @@ type RecipeResultCardProps = {
   recipeId?: string;
   cuisine?: string | null;
   favorited?: boolean;
+  /** Ingredients from the user's pantry used in this recipe. */
+  onHandCount?: number;
+  /** Extra ingredients the user still needs. */
+  missingCount?: number;
   onPress: () => void;
   onToggleFavorite?: () => void;
 };
@@ -53,6 +55,8 @@ export function RecipeResultCard({
   recipeId,
   cuisine,
   favorited,
+  onHandCount,
+  missingCount = 0,
   onPress,
   onToggleFavorite,
 }: RecipeResultCardProps) {
@@ -60,16 +64,25 @@ export function RecipeResultCard({
   const theme = useTheme();
   const { isDark } = theme;
 
+  const totalParts =
+    onHandCount != null ? onHandCount + Math.max(0, missingCount) : 0;
+  const matchPercent =
+    totalParts > 0 && onHandCount != null
+      ? Math.round((onHandCount / totalParts) * 100)
+      : null;
+  const showPantry = matchPercent != null;
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.shadow, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.shadow, pressed && styles.pressed]}
+    >
       <View
         style={[
           styles.card,
           {
-            backgroundColor: isDark ? theme.backgroundElement : '#fff',
+            backgroundColor: isDark ? theme.backgroundElement : SnapChef.white,
             borderColor: isDark ? theme.border : TINT_BORDER[tint],
           },
         ]}
@@ -82,8 +95,9 @@ export function RecipeResultCard({
             transition={220}
           />
           <LinearGradient
-            colors={['rgba(10,1,22,0.05)', 'rgba(10,1,22,0.78)']}
-            style={styles.heroOverlay}>
+            colors={['rgba(10,1,22,0.08)', 'rgba(10,1,22,0.78)']}
+            style={styles.heroOverlay}
+          >
             <Text style={styles.heroTitle} numberOfLines={2}>
               {title}
             </Text>
@@ -93,6 +107,21 @@ export function RecipeResultCard({
               </Text>
             ) : null}
           </LinearGradient>
+
+          {showPantry ? (
+            <View style={styles.matchRow} pointerEvents="none">
+              <View style={styles.matchChip}>
+                <Ionicons name="checkmark-circle" size={12} color="#fff" />
+                <Text style={styles.matchChipText}>{matchPercent}% match</Text>
+              </View>
+              {missingCount > 0 ? (
+                <View style={styles.missingChip}>
+                  <Text style={styles.missingChipText}>{missingCount} missing</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
           {onToggleFavorite ? (
             <View style={styles.heartWrap}>
               <GlassIconButton
@@ -107,26 +136,71 @@ export function RecipeResultCard({
 
         <View style={styles.body}>
           <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.1)' }]}>
-              <Ionicons name="people-outline" size={13} color={PRIMARY} />
-              <Text style={[styles.badgeText, { color: theme.text }]}>{servings} servings</Text>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.1)' },
+              ]}
+            >
+              <Ionicons name="people-outline" size={13} color={SnapChef.primary} />
+              <Text style={[styles.badgeText, { color: theme.text }]}>
+                {servings} servings
+              </Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.1)' }]}>
-              <Ionicons name="time-outline" size={13} color={PRIMARY} />
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.1)' },
+              ]}
+            >
+              <Ionicons name="time-outline" size={13} color={SnapChef.primary} />
               <Text style={[styles.badgeText, { color: theme.text }]}>{timeLabel}</Text>
             </View>
             {difficulty ? (
-              <View style={[styles.badge, styles.badgeAccent, { backgroundColor: isDark ? theme.field : 'rgba(137,102,250,0.18)' }]}>
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: isDark ? theme.field : 'rgba(255, 228, 214, 0.95)',
+                  },
+                ]}
+              >
                 <Ionicons name="flame-outline" size={13} color={theme.text} />
                 <Text style={[styles.badgeText, { color: theme.text }]}>{difficulty}</Text>
               </View>
             ) : null}
           </View>
 
+          {showPantry ? (
+            <View style={styles.pantryBlock}>
+              <View style={styles.pantryHeader}>
+                <Text style={[styles.pantryLabel, { color: theme.textSecondary }]}>
+                  Ingredients on hand
+                </Text>
+                <Text style={[styles.pantryCount, { color: theme.text }]}>
+                  {onHandCount} of {totalParts}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.progressTrack,
+                  { backgroundColor: isDark ? theme.field : 'rgba(137,102,250,0.12)' },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${Math.min(100, matchPercent ?? 0)}%` },
+                  ]}
+                />
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.footer}>
             <Text style={[styles.seeRecipe, { color: theme.tint }]}>See recipe</Text>
-            <View style={[styles.arrowChip, { backgroundColor: isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.12)' }]}>
-              <Ionicons name="arrow-forward" size={16} color={theme.tint} />
+            <View style={styles.seeBtn}>
+              <Ionicons name="arrow-forward" size={16} color={SnapChef.white} />
             </View>
           </View>
         </View>
@@ -159,10 +233,34 @@ export function RecipeCardSkeleton() {
           },
         ]}
       >
-        <View style={[styles.skelHero, { backgroundColor: theme.isDark ? theme.backgroundSelected : 'rgba(137,102,250,0.14)' }]} />
+        <View
+          style={[
+            styles.skelHero,
+            {
+              backgroundColor: theme.isDark
+                ? theme.backgroundSelected
+                : 'rgba(137,102,250,0.14)',
+            },
+          ]}
+        />
         <View style={styles.skelBody}>
-          <View style={[styles.skelLine, { backgroundColor: theme.isDark ? theme.field : 'rgba(137,102,250,0.15)' }]} />
-          <View style={[styles.skelLine, { width: '55%', backgroundColor: theme.isDark ? theme.field : 'rgba(137,102,250,0.15)' }]} />
+          <View
+            style={[
+              styles.skelLine,
+              {
+                backgroundColor: theme.isDark ? theme.field : 'rgba(137,102,250,0.15)',
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.skelLine,
+              {
+                width: '55%',
+                backgroundColor: theme.isDark ? theme.field : 'rgba(137,102,250,0.15)',
+              },
+            ]}
+          />
         </View>
       </View>
     </Animated.View>
@@ -171,20 +269,20 @@ export function RecipeCardSkeleton() {
 
 const styles = StyleSheet.create({
   shadow: {
-    borderRadius: 28,
+    borderRadius: Radii.card,
     marginBottom: 16,
-    shadowColor: PRIMARY,
+    shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.14,
     shadowRadius: 20,
     elevation: 6,
   },
   pressed: { opacity: 0.96, transform: [{ scale: 0.985 }] },
   card: {
-    borderRadius: 28,
+    borderRadius: Radii.card,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    backgroundColor: '#fff',
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: SnapChef.white,
   },
   hero: {
     height: 190,
@@ -211,6 +309,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  matchRow: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 56,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  matchChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(47, 107, 79, 0.92)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  matchChipText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  missingChip: {
+    backgroundColor: 'rgba(255, 232, 214, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  missingChipText: {
+    color: SnapChef.ink,
+    fontSize: 11,
+    fontWeight: '800',
+  },
   heartWrap: {
     position: 'absolute',
     top: 12,
@@ -220,7 +352,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 16,
-    gap: 14,
+    gap: 12,
   },
   badges: {
     flexDirection: 'row',
@@ -236,13 +368,36 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(137,102,250,0.1)',
   },
-  badgeAccent: {
-    backgroundColor: 'rgba(137,102,250,0.18)',
-  },
   badgeText: {
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'capitalize',
+  },
+  pantryBlock: {
+    gap: 6,
+  },
+  pantryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pantryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pantryCount: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 5,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: SnapChef.primary,
   },
   footer: {
     flexDirection: 'row',
@@ -253,12 +408,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
-  arrowChip: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  seeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: SnapChef.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: SnapChef.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 3,
   },
   skeleton: {
     overflow: 'hidden',

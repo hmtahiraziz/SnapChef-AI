@@ -49,6 +49,7 @@ export default function PreferencesScreen() {
             label="Default cuisine"
             value={country}
             onPress={() => router.push('/preferences/cuisine' as Href)}
+            showDivider={false}
           />
         </View>
       </GlassCard>
@@ -56,7 +57,12 @@ export default function PreferencesScreen() {
       <GlassCard tint="white" padded={false}>
         <View style={styles.pad}>
           <SettingsRow label="Clear local data" destructive onPress={handleClearLocalData} />
-          <SettingsRow label="App version" value={appVersion} showChevron={false} />
+          <SettingsRow
+            label="App version"
+            value={appVersion}
+            showChevron={false}
+            showDivider={false}
+          />
         </View>
       </GlassCard>
     </ScreenContainer>

@@ -91,7 +91,7 @@ def _normalize_recipe(recipe: Recipe, country: str, index: int) -> Recipe:
     if not steps:
         steps = ["Prepare the ingredients.", "Cook until done.", "Serve hot."]
     else:
-        steps = steps[:6]
+        steps = steps[:4]
 
     ingredients = _clean_ingredient_list(recipe.ingredients)
     if not ingredients:
@@ -118,60 +118,31 @@ def _normalize_recipe(recipe: Recipe, country: str, index: int) -> Recipe:
 
 
 def _recipe_prompt(max_recipes: int, country: str) -> str:
-    pakistan_rules = ""
-    if country.strip().lower() in {"pakistan", "pakistani"}:
-        pakistan_rules = (
-            "Pakistan: prefer home-style Pakistani dishes; common spices "
-            "(cumin, coriander, turmeric, chili, garam masala, ginger, garlic); "
-            "household units (tsp, tbsp, cup, g, ml, whole)."
-        )
-
-    return f"""You are SnapChef AI. Return cook-ready home recipes as JSON only.
-
-Country/cuisine: {country}
-{pakistan_rules}
+    return f"""SnapChef AI. JSON only — cook-ready home recipes for {country}.
 
 Rules:
-- Main "ingredients" = ONLY items from the user's available list (with quantity/unit).
-- Extra required items go in "missingIngredients"; upgrades in "optionalIngredients".
-- Up to {max_recipes} distinct recipes. Appetizing titles. 1 short description sentence.
-- difficulty: easy|medium|hard. Realistic prep/cook minutes. Servings 2–4.
-- steps: 4–6 short actionable steps each. Be concise.
+- "ingredients" = only from the user's list (with quantity/unit).
+- Other needs → "missingIngredients"; upgrades → "optionalIngredients".
+- Return up to {max_recipes} distinct recipes.
+- Title appetizing. description: one short sentence.
+- difficulty: easy|medium|hard. servings 2–4. realistic minutes.
+- steps: 3–4 short actions each. Be terse.
 
-JSON shape:
-{{
-  "recipes": [
-    {{
-      "id": "kebab-case-id",
-      "title": "Recipe name",
-      "servings": 2,
-      "prepTimeMinutes": 10,
-      "cookTimeMinutes": 20,
-      "country": "{country}",
-      "cuisine": "Cuisine",
-      "description": "One short sentence.",
-      "difficulty": "easy",
-      "ingredients": [{{"name": "Onion", "quantity": "1", "unit": "whole"}}],
-      "missingIngredients": [{{"name": "Salt", "quantity": "1", "unit": "tsp"}}],
-      "optionalIngredients": [],
-      "steps": ["Step one.", "Step two."]
-    }}
-  ]
-}}
-
-No markdown. JSON only.
+Schema:
+{{"recipes":[{{"id":"kebab-case","title":"Name","servings":2,"prepTimeMinutes":10,"cookTimeMinutes":20,"country":"{country}","cuisine":"Cuisine","description":"One sentence.","difficulty":"easy","ingredients":[{{"name":"Onion","quantity":"1","unit":"whole"}}],"missingIngredients":[],"optionalIngredients":[],"steps":["Do this.","Then that."]}}]}}
 """
 
 
 def _max_tokens_for_count(max_recipes: int) -> int:
-    # Keep output budget tight so generation finishes faster.
-    return min(2400, 900 + max_recipes * 550)
+    # Tight budget for faster first paint (1 recipe ≈ 700–900 tokens).
+    return min(1600, 650 + max_recipes * 420)
 
 
 async def generate_recipes(
     ingredients: list[str],
     max_recipes: int,
     country: str,
+    exclude_titles: list[str] | None = None,
 ) -> GenerateRecipesResponse:
     if not ingredients:
         raise HTTPException(status_code=400, detail="At least one ingredient is required.")
@@ -181,12 +152,16 @@ async def generate_recipes(
     ingredient_text = ", ".join(item.strip() for item in ingredients if item.strip())
     country_text = country.strip()
     recipe_count = max(1, min(max_recipes, 5))
+    excluded = [title.strip() for title in (exclude_titles or []) if title and title.strip()]
+    exclude_line = (
+        f"Do not repeat these titles: {', '.join(excluded)}.\n" if excluded else ""
+    )
 
     try:
         response = await client.chat.completions.create(
             model=settings.openai_model_recipes,
             response_format={"type": "json_object"},
-            temperature=0.4,
+            temperature=0.35,
             max_tokens=_max_tokens_for_count(recipe_count),
             messages=[
                 {"role": "system", "content": _recipe_prompt(recipe_count, country_text)},
@@ -195,7 +170,8 @@ async def generate_recipes(
                     "content": (
                         f"Country: {country_text}\n"
                         f"Available ingredients: {ingredient_text}\n"
-                        f"Return {recipe_count} recipes. Keep steps short."
+                        f"{exclude_line}"
+                        f"Return {recipe_count} recipe(s). Keep steps short."
                     ),
                 },
             ],

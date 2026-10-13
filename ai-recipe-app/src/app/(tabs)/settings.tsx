@@ -106,6 +106,7 @@ export default function SettingsScreen() {
           <SettingsRow
             label="Privacy Policy"
             onPress={() => router.push('/legal/privacy' as Href)}
+            showDivider={false}
           />
         </View>
       </GlassCard>
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radii.pill,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   signOutText: { color: '#c62828', fontWeight: '700', fontSize: 15 },
 });

@@ -11,20 +11,23 @@ import {
   View,
 } from 'react-native';
 
+import { useBootOptional } from '@/context/BootContext';
 import { Fonts, SnapChef } from '@/constants/theme';
 
-/** Total target ≈ 1.2–1.4s (enter + hold + exit) — under 1.5s production bar. */
 const ENTER_MS = 320;
-const HOLD_MS = 280;
-const EXIT_MS = 260;
+const MIN_HOLD_MS = 400;
+const EXIT_MS = 280;
 const TITLE_DELAY_MS = 60;
 const TITLE_MS = 260;
+/** Safety: never block the UI forever if routing stalls. */
+const MAX_BOOT_WAIT_MS = 4500;
 
 /**
- * Production branded splash — shown once JS is ready.
- * Uses RN Animated only (no Reanimated Keyframes) for release-APK stability.
+ * Branded splash — stays up until navigation has settled (no home→onboarding flash).
  */
 export function AnimatedSplashOverlay() {
+  const boot = useBootOptional();
+  const navSettled = boot?.navSettled ?? true;
   const { width, height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
   const opacity = useRef(new Animated.Value(1)).current;
@@ -32,12 +35,34 @@ export function AnimatedSplashOverlay() {
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const titleTranslate = useRef(new Animated.Value(10)).current;
+  const enterDoneRef = useRef(false);
+  const minHoldDoneRef = useRef(false);
+  const exitingRef = useRef(false);
+  const navSettledRef = useRef(navSettled);
+  navSettledRef.current = navSettled;
 
   const logoSize = Math.min(148, Math.round(Math.min(width, height) * 0.34));
+
+  const tryExit = () => {
+    if (exitingRef.current) return;
+    if (!enterDoneRef.current || !minHoldDoneRef.current) return;
+    if (!navSettledRef.current) return;
+
+    exitingRef.current = true;
+    Animated.timing(opacity, {
+      toValue: 0,
+      duration: EXIT_MS,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setVisible(false);
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
     let holdTimer: ReturnType<typeof setTimeout> | undefined;
+    let maxTimer: ReturnType<typeof setTimeout> | undefined;
 
     const run = async () => {
       await SplashScreen.hideAsync().catch(() => {});
@@ -75,19 +100,23 @@ export function AnimatedSplashOverlay() {
         ]),
       ]).start(({ finished }) => {
         if (!finished || cancelled) return;
+        enterDoneRef.current = true;
 
         holdTimer = setTimeout(() => {
           if (cancelled) return;
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: EXIT_MS,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }).start(({ finished: exitDone }) => {
-            if (exitDone && !cancelled) setVisible(false);
-          });
-        }, HOLD_MS);
+          minHoldDoneRef.current = true;
+          tryExit();
+        }, MIN_HOLD_MS);
       });
+
+      maxTimer = setTimeout(() => {
+        if (cancelled || exitingRef.current) return;
+        // Unstick splash only — AuthGate cover still hides wrong routes.
+        enterDoneRef.current = true;
+        minHoldDoneRef.current = true;
+        navSettledRef.current = true;
+        tryExit();
+      }, MAX_BOOT_WAIT_MS);
     };
 
     void run();
@@ -95,14 +124,21 @@ export function AnimatedSplashOverlay() {
     return () => {
       cancelled = true;
       if (holdTimer) clearTimeout(holdTimer);
+      if (maxTimer) clearTimeout(maxTimer);
     };
-  }, [logoOpacity, logoScale, opacity, titleOpacity, titleTranslate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstraps once
+  }, []);
+
+  useEffect(() => {
+    tryExit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navSettled]);
 
   if (!visible) return null;
 
   return (
     <Animated.View
-      pointerEvents="none"
+      pointerEvents="auto"
       style={[styles.overlay, { opacity }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">

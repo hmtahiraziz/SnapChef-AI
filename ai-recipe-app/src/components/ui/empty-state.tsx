@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     padding: Spacing.four,
     borderRadius: Spacing.three,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'flex-start',
   },
   action: {

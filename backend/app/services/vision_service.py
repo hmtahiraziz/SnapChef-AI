@@ -71,9 +71,13 @@ def _normalize_items(parsed: dict) -> list[ExtractedIngredient]:
     return collected
 
 
-async def extract_ingredients_from_image(image_base64: str) -> VisionExtractResponse:
+async def extract_ingredients_from_image(
+    image_base64: str,
+    mime_type: str = "image/jpeg",
+) -> VisionExtractResponse:
     settings = get_settings()
     client = get_openai_client()
+    safe_mime = mime_type if mime_type.startswith("image/") else "image/jpeg"
 
     try:
         response = await client.chat.completions.create(
@@ -87,7 +91,9 @@ async def extract_ingredients_from_image(image_base64: str) -> VisionExtractResp
                         {"type": "text", "text": VISION_PROMPT},
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+                            "image_url": {
+                                "url": f"data:{safe_mime};base64,{image_base64}",
+                            },
                         },
                     ],
                 }

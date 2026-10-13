@@ -1,7 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { type ReactNode } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, type ViewProps } from 'react-native';
+import { type ReactNode, useEffect, useState } from 'react';
+import {
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  type ViewProps,
+} from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import * as SystemUI from 'expo-system-ui';
 
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -29,6 +37,31 @@ export function ScreenContainer({
   const { width } = useWindowDimensions();
   const horizontalPad = width >= 768 ? Spacing.five : Spacing.four;
   const resolvedEdges: Edge[] = edges ?? ['top', 'right', 'bottom', 'left'];
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!gradient) return;
+    // Keep Android status / system chrome aligned with the screen gradient.
+    void SystemUI.setBackgroundColorAsync(theme.gradientStart).catch(() => {});
+  }, [gradient, theme.gradientStart]);
+
+  // Drop the floating-tab reserve while typing — avoids a huge empty band above the keyboard.
+  const bottomPad = keyboardOpen
+    ? Spacing.three
+    : withTabInset
+      ? BottomTabInset + Spacing.four
+      : undefined;
 
   const content = (
     <ThemedView
@@ -39,18 +72,19 @@ export function ScreenContainer({
         style,
       ]}
       type={gradient ? undefined : 'background'}
-      {...rest}>
+      {...rest}
+    >
       {children}
     </ThemedView>
   );
 
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={[
-        styles.scrollContent,
-        withTabInset && { paddingBottom: BottomTabInset + Spacing.four },
-      ]}
-      keyboardShouldPersistTaps="handled">
+      contentContainerStyle={[styles.scrollContent, bottomPad != null && { paddingBottom: bottomPad }]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
+    >
       {content}
     </ScrollView>
   ) : (
@@ -58,9 +92,10 @@ export function ScreenContainer({
       style={[
         styles.staticContent,
         gradient && styles.transparent,
-        withTabInset && { paddingBottom: BottomTabInset + Spacing.four },
+        bottomPad != null && { paddingBottom: bottomPad },
       ]}
-      type={gradient ? undefined : 'background'}>
+      type={gradient ? undefined : 'background'}
+    >
       {content}
     </ThemedView>
   );
