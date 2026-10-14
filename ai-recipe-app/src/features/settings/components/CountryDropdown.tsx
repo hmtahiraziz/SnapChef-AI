@@ -5,6 +5,7 @@ import {
   Dimensions,
   Easing,
   FlatList,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -157,11 +158,16 @@ export function CountryDropdown({
 
   const select = useCallback(
     (country: string) => {
+      Keyboard.dismiss();
       onChange(country);
       closeSheet();
     },
     [onChange, closeSheet],
   );
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
 
   const renderItem = useCallback(
     ({ item: country }: { item: string }) => {
@@ -171,6 +177,7 @@ export function CountryDropdown({
 
       return (
         <Pressable
+          onPressIn={dismissKeyboard}
           onPress={() => select(country)}
           accessibilityRole="button"
           accessibilityState={{ selected }}
@@ -243,7 +250,7 @@ export function CountryDropdown({
         </Pressable>
       );
     },
-    [value, select, isDark, theme],
+    [value, select, dismissKeyboard, isDark, theme],
   );
 
   const keyExtractor = useCallback((item: string) => item, []);
@@ -386,6 +393,9 @@ export function CountryDropdown({
               renderItem={renderItem}
               keyExtractor={keyExtractor}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              onScrollBeginDrag={dismissKeyboard}
+              onTouchStart={dismissKeyboard}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.listContent}
               ListEmptyComponent={

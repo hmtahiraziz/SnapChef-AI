@@ -23,7 +23,7 @@ const webBackdropStyle = {
 export function FrostedHeaderBackground({ intensity = 64 }: FrostedHeaderBackgroundProps) {
   const theme = useTheme();
   const tint = theme.isDark ? 'dark' : 'light';
-  const wash = theme.isDark ? 'rgba(11, 11, 15, 0.45)' : 'rgba(250, 250, 253, 0.52)';
+  const wash = theme.isDark ? 'rgba(11, 11, 15, 0.78)' : 'rgba(250, 250, 253, 0.82)';
   const edge = theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(10, 1, 22, 0.06)';
 
   return (
