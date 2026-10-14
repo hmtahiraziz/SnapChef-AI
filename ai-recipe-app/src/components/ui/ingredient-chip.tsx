@@ -1,11 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SnapChef } from '@/constants/theme';
 
 type IngredientChipProps = {
   label: string;
   onRemove?: () => void;
+  /** Persist a renamed ingredient (tap the name to edit). */
+  onRename?: (nextLabel: string) => void;
   dashed?: boolean;
   onPress?: () => void;
 };
@@ -50,9 +53,25 @@ const getIngredientEmoji = (label: string): string => {
 
 import { useTheme } from '@/hooks/use-theme';
 
-export function IngredientChip({ label, onRemove, dashed, onPress }: IngredientChipProps) {
+export function IngredientChip({ label, onRemove, onRename, dashed, onPress }: IngredientChipProps) {
   const theme = useTheme();
   const { isDark } = theme;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(label);
+
+  useEffect(() => {
+    if (!editing) setDraft(label);
+  }, [label, editing]);
+
+  const commitRename = () => {
+    setEditing(false);
+    const next = draft.trim();
+    if (!next || next === label) {
+      setDraft(label);
+      return;
+    }
+    onRename?.(next);
+  };
 
   if (dashed) {
     return (
@@ -77,7 +96,7 @@ export function IngredientChip({ label, onRemove, dashed, onPress }: IngredientC
     );
   }
 
-  const emoji = getIngredientEmoji(label);
+  const emoji = getIngredientEmoji(editing ? draft || label : label);
 
   return (
     <View
@@ -86,12 +105,34 @@ export function IngredientChip({ label, onRemove, dashed, onPress }: IngredientC
         {
           backgroundColor: isDark ? 'rgba(28, 24, 38, 0.85)' : 'rgba(255, 255, 255, 0.88)',
         },
+        editing && styles.chipEditing,
       ]}
     >
       <Text style={styles.emojiText}>{emoji}</Text>
-      <Text style={[styles.label, { color: theme.text }]} numberOfLines={1}>
-        {label}
-      </Text>
+      {editing && onRename ? (
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onBlur={commitRename}
+          onSubmitEditing={commitRename}
+          autoFocus
+          selectTextOnFocus
+          returnKeyType="done"
+          style={[styles.labelInput, { color: theme.text }]}
+          accessibilityLabel={`Edit ${label}`}
+        />
+      ) : (
+        <Pressable
+          onPress={onRename ? () => setEditing(true) : onPress}
+          disabled={!onRename && !onPress}
+          accessibilityRole={onRename ? 'button' : undefined}
+          accessibilityLabel={onRename ? `Edit ${label}` : label}
+          style={styles.labelPress}>
+          <Text style={[styles.label, { color: theme.text }]} numberOfLines={1}>
+            {label}
+          </Text>
+        </Pressable>
+      )}
       {onRemove ? (
         <Pressable
           onPress={onRemove}
@@ -134,14 +175,31 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
+  chipEditing: {
+    maxWidth: 260,
+  },
   emojiText: {
     fontSize: 14,
+  },
+  labelPress: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   label: {
     flexShrink: 1,
     fontSize: 13,
     fontWeight: '600',
     color: SnapChef.ink,
+  },
+  labelInput: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 72,
+    maxWidth: 160,
+    fontSize: 13,
+    fontWeight: '600',
+    paddingVertical: 0,
+    margin: 0,
   },
   removeBtn: {
     width: 22,

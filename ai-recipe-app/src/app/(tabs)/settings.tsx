@@ -1,25 +1,21 @@
-import { useAuth, useUser } from '@clerk/clerk-expo';
-import * as ImagePicker from 'expo-image-picker';
+import { useUser } from '@clerk/clerk-expo';
+import Constants from 'expo-constants';
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { GlassCard } from '@/components/ui/glass-card';
-import { Radii, Spacing } from '@/constants/theme';
+import { Fonts, Spacing } from '@/constants/theme';
+import { getCountryFlag } from '@/constants/countries';
 import { usePreferences } from '@/context/PreferencesContext';
 import { ProfileHeader } from '@/features/profile';
-import { SettingsRow } from '@/features/settings';
-
+import { SectionLabel, SettingsRow } from '@/features/settings';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function SettingsScreen() {
   const { user } = useUser();
-  const { signOut } = useAuth();
   const { country } = usePreferences();
-  const [uploading, setUploading] = useState(false);
   const theme = useTheme();
-  const { isDark } = theme;
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
@@ -28,116 +24,81 @@ export default function SettingsScreen() {
     user?.primaryEmailAddress?.emailAddress ||
     'Chef';
   const email = user?.primaryEmailAddress?.emailAddress ?? 'Signed in';
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const buildNumber =
+    Constants.expoConfig?.ios?.buildNumber ??
+    Constants.expoConfig?.android?.versionCode?.toString() ??
+    null;
+  const versionLabel = buildNumber
+    ? `SnapChef AI • Version ${appVersion} (Build ${buildNumber})`
+    : `SnapChef AI • Version ${appVersion}`;
 
-  const uploadAvatar = async () => {
-    if (!user) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo library access to update your profile picture.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-
-    if (result.canceled || !result.assets[0]) return;
-
-    const asset = result.assets[0];
-    setUploading(true);
-    try {
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      await user.setProfileImage({ file: blob as unknown as File });
-      Alert.alert('Updated', 'Your profile photo has been updated.');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Could not update profile photo.';
-      Alert.alert('Upload failed', message);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSignOut = () => {
-    Alert.alert('Sign out?', 'You can sign back in anytime.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              await signOut();
-            } finally {
-              // AuthGate also redirects signed-out users; this makes sign-in immediate.
-              router.replace('/sign-in');
-            }
-          })();
-        },
-      },
-    ]);
-  };
+  const cuisineSubtitle = `${country} ${getCountryFlag(country)}`.trim();
 
   return (
-    <ScreenContainer scroll gradient>
-      <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Account, preferences, and sign out.</Text>
-
+    <ScreenContainer
+      scroll
+      gradient
+      header={
+        <View>
+          <Text style={[styles.title, { color: theme.text, fontFamily: Fonts.bodyBold }]}>Settings</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary, fontFamily: Fonts.body }]}>
+            Account and preferences.
+          </Text>
+        </View>
+      }>
       <ProfileHeader
         displayName={displayName}
         email={email}
         imageUrl={user?.imageUrl}
         greeting="Hello"
-        onPressAvatar={() => void uploadAvatar()}
-        uploading={uploading}
       />
 
-      <GlassCard tint="white" padded={false}>
-        <View style={styles.settingsPad}>
+      <View style={styles.section}>
+        <SectionLabel>CULINARY PREFERENCES</SectionLabel>
+        <GlassCard tint="white" padded={false} style={styles.card}>
           <SettingsRow
+            icon="book-outline"
+            iconColor="#7B5CFA"
+            iconBg="rgba(137, 102, 250, 0.14)"
             label="Cuisine"
-            value={country}
+            subtitle={cuisineSubtitle}
             onPress={() => router.push('/preferences/cuisine' as Href)}
-          />
-          <SettingsRow label="Account" onPress={() => router.push('/account' as Href)} />
-          <SettingsRow
-            label="Privacy Policy"
-            onPress={() => router.push('/legal/privacy' as Href)}
             showDivider={false}
           />
-        </View>
-      </GlassCard>
+        </GlassCard>
+      </View>
 
-      <Pressable
-        onPress={handleSignOut}
-        style={[
-          styles.signOut,
-          {
-            backgroundColor: isDark ? 'rgba(198,40,40,0.08)' : 'rgba(255,255,255,0.7)',
-            borderColor: isDark ? 'rgba(198,40,40,0.45)' : 'rgba(198,40,40,0.35)',
-          },
-        ]}
-        accessibilityRole="button"
-      >
-        <Text style={styles.signOutText}>Sign out</Text>
-      </Pressable>
+      <View style={styles.section}>
+        <SectionLabel>ACCOUNT</SectionLabel>
+        <GlassCard tint="white" padded={false} style={styles.card}>
+          <SettingsRow
+            icon="person-outline"
+            iconColor="#3B82F6"
+            iconBg="rgba(59, 130, 246, 0.14)"
+            label="Account Security"
+            onPress={() => router.push('/account' as Href)}
+            showDivider={false}
+          />
+        </GlassCard>
+      </View>
+
+      <Text style={[styles.version, { color: theme.textSecondary, fontFamily: Fonts.body }]}>
+        {versionLabel}
+      </Text>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '800' },
-  subtitle: { fontSize: 14, marginBottom: Spacing.one },
-  settingsPad: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  signOut: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+  title: { fontSize: 30, fontWeight: '800' },
+  subtitle: { fontSize: 14, marginTop: 4 },
+  section: { width: '100%' },
+  card: { width: '100%' },
+  version: {
+    textAlign: 'center',
+    fontSize: 12,
+    marginTop: Spacing.three,
+    marginBottom: Spacing.three,
   },
-  signOutText: { color: '#c62828', fontWeight: '700', fontSize: 15 },
 });

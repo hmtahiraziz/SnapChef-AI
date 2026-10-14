@@ -13,8 +13,8 @@ import { BrandMark } from '@/components/brand-mark';
 import { GenerateRecipeCard } from '@/components/generate-recipe-card';
 import { ScreenContainer } from '@/components/screen-container';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FavoriteRecipeCard } from '@/components/ui/favorite-recipe-card';
 import { IngredientComposer } from '@/components/ui/ingredient-composer';
-import { RecipeGlassCard } from '@/components/ui/recipe-glass-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { hasApiBaseUrl } from '@/constants/env';
 import { SnapChef, Spacing } from '@/constants/theme';
@@ -28,7 +28,7 @@ type ScanSource = 'camera' | 'gallery' | null;
 
 function formatTime(prep?: number, cook?: number): string {
   const total = (prep ?? 0) + (cook ?? 0);
-  return total > 0 ? `${total} minutes` : 'Time varies';
+  return total > 0 ? `${total} min` : 'Time varies';
 }
 
 function greetingForHour(hours: number): string {
@@ -38,9 +38,9 @@ function greetingForHour(hours: number): string {
 }
 
 export default function HomeScreen() {
-  const { ingredients, mergeIngredients, removeIngredient } = useIngredients();
+  const { ingredients, mergeIngredients, removeIngredient, renameIngredient } = useIngredients();
   const { country, setCountry } = usePreferences();
-  const { favorites } = useFavorites();
+  const { favorites, removeFavorite } = useFavorites();
   const theme = useTheme();
 
   const [showCamera, setShowCamera] = useState(false);
@@ -53,7 +53,7 @@ export default function HomeScreen() {
 
   const { isDark } = theme;
   const previewFavorites = favorites.slice(0, 4);
-  const tints = ['lavender', 'mint', 'cream', 'peach'] as const;
+  const greeting = greetingForHour(new Date().getHours());
 
   const craftColors = isDark
     ? (['#1A1A24', '#121218'] as const)
@@ -110,30 +110,30 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScreenContainer scroll gradient>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.greeting, isDark && styles.greetingDark]}>
-            {greetingForHour(new Date().getHours())}
+    <ScreenContainer
+      scroll
+      gradient
+      header={
+        <View style={styles.headerBlock}>
+          <Text
+            style={[styles.greeting, { color: theme.textSecondary }]}
+            numberOfLines={1}>
+            {greeting} 👋
           </Text>
           <View style={styles.brandRow}>
-            <BrandMark size={33} tone={isDark ? 'dark' : 'light'} />
-            <Text style={[styles.brand, { color: theme.text }]}>SnapChef AI</Text>
+            <BrandMark size={40} tone={isDark ? 'dark' : 'light'} />
+            <Text
+              style={[styles.brand, { color: theme.text }]}
+              numberOfLines={1}
+              accessibilityRole="header">
+              SnapChef AI
+            </Text>
           </View>
+          <Text style={[styles.greetingSub, { color: theme.textSecondary }]}>
+            What would you like to cook today?
+          </Text>
         </View>
-        <Pressable
-          onPress={() => router.push('/(tabs)/settings')}
-          style={[
-            styles.headerProfileBtn,
-            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-        >
-          <Ionicons name="settings-sharp" size={18} color={theme.text} />
-        </Pressable>
-      </View>
-
+      }>
       <View style={styles.craftCardShadow}>
         <LinearGradient
           colors={craftColors}
@@ -146,22 +146,34 @@ export default function HomeScreen() {
               <View style={[styles.wandContainer, { backgroundColor: wandBgColor }]}>
                 <Ionicons name="sparkles" size={18} color={isDark ? '#FFF6D6' : '#0A0116'} />
               </View>
-              <Text style={[styles.craftTitle, { color: theme.text }]}>
-                Craft a recipe from what you have
-              </Text>
+              <View style={styles.craftHeadCopy}>
+                <Text style={[styles.craftTitle, { color: theme.text }]}>
+                  Craft a recipe from what you have
+                </Text>
+                <Text style={[styles.craftSubtitle, { color: theme.textSecondary }]}>
+                  SnapChef AI pairs your spices & pantry instantly.
+                </Text>
+              </View>
             </View>
 
             <IngredientComposer
               ingredients={ingredients}
               onAddMany={mergeIngredients}
               onRemove={removeIngredient}
+              onRename={renameIngredient}
             />
 
-            <CountryDropdown
-              value={country}
-              onChange={(next) => void setCountry(next)}
-              maxListHeight={200}
-            />
+            <View style={styles.cuisineBlock}>
+              <View style={styles.cuisineHeader}>
+                <Text style={[styles.cuisineLabel, { color: theme.text }]}>Cuisine</Text>
+                <Text style={[styles.cuisineHint, { color: theme.tint }]}>Tap to customize</Text>
+              </View>
+              <CountryDropdown
+                value={country}
+                onChange={(next) => void setCountry(next)}
+                maxListHeight={200}
+              />
+            </View>
 
             {showCamera ? (
               <IngredientCapture
@@ -222,6 +234,12 @@ export default function HomeScreen() {
 
       <SectionHeader
         title="Favorites"
+        badge={favorites.length > 0 ? `${favorites.length} Saved` : undefined}
+        subtitle={
+          previewFavorites.length > 0
+            ? 'Your saved recipes, ready when you are.'
+            : undefined
+        }
         actionLabel={previewFavorites.length > 0 ? 'See all' : undefined}
         onAction={previewFavorites.length > 0 ? () => router.push('/favorites') : undefined}
       />
@@ -234,17 +252,14 @@ export default function HomeScreen() {
           onAction={() => openScan('camera')}
         />
       ) : (
-        previewFavorites.map((recipe, index) => (
-          <RecipeGlassCard
+        previewFavorites.map((recipe) => (
+          <FavoriteRecipeCard
             key={recipe.id}
-            title={recipe.title}
+            recipe={recipe}
             timeLabel={formatTime(recipe.prepTimeMinutes, recipe.cookTimeMinutes)}
-            meta={`${recipe.servings} servings`}
-            tint={tints[index % tints.length]}
-            imageUrl={recipe.imageUrl}
-            recipeId={recipe.id}
-            cuisine={recipe.cuisine ?? recipe.country}
+            favorited
             onPress={() => router.push(`/recipe/${recipe.id}`)}
+            onToggleFavorite={() => void removeFavorite(recipe.id)}
           />
         ))
       )}
@@ -253,52 +268,32 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.four,
-    marginTop: 8,
+  headerBlock: {
+    gap: 8,
+    paddingBottom: 4,
   },
-  headerLeft: {
-    gap: 2,
-    flex: 1,
-    paddingRight: 12,
+  greeting: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+    lineHeight: 20,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    minWidth: 0,
   },
   brand: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: SnapChef.ink,
+    letterSpacing: -0.4,
     flexShrink: 1,
   },
-  greeting: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8966FA',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 2,
-  },
-  greetingDark: {
-    color: '#C4B0FF',
-  },
-  headerProfileBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    shadowColor: '#8966FA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+  greetingSub: {
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 21,
   },
   craftCardShadow: {
     borderRadius: 28,
@@ -317,18 +312,23 @@ const styles = StyleSheet.create({
   },
   craftInner: {
     padding: 20,
-    gap: 16,
+    gap: 18,
   },
   craftHead: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
-    marginBottom: 6,
+    marginBottom: 2,
+  },
+  craftHeadCopy: {
+    flex: 1,
+    gap: 4,
+    paddingTop: 2,
   },
   wandContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -338,10 +338,30 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   craftTitle: {
-    flex: 1,
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 21,
+  },
+  craftSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 17,
+  },
+  cuisineBlock: {
+    gap: 10,
+  },
+  cuisineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cuisineLabel: {
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 20,
+  },
+  cuisineHint: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   warning: {
     textAlign: 'center',

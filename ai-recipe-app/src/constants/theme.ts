@@ -122,8 +122,31 @@ export const Radii = {
 } as const;
 
 /**
- * Extra inset for the floating pill tab bar (labels + raised AI center + safe area).
- * Keep slightly generous so scroll content never sits under the bar / system nav.
+ * Floating pill tab bar metrics — keep in sync with `FloatingTabBar`.
+ * Content inset is computed from safe-area bottom so Android/iOS never clip.
  */
-export const BottomTabInset = Platform.select({ ios: 112, android: 120 }) ?? 112;
+export const FloatingTabMetrics = {
+  pillHeight: 68,
+  bottomGap: 10,
+  /** Raised AI Scan button hangs above the pill. */
+  centerLift: 16,
+  /** Extra breathing room under the last scroll item. */
+  contentBuffer: 20,
+} as const;
+
+/** Fallback when insets are unavailable (e.g. SSR / first paint). */
+export const BottomTabInset = Platform.select({ ios: 118, android: 128 }) ?? 118;
+
+/** Scroll/content padding so the last item clears the floating tab bar. */
+export function getFloatingTabContentInset(safeBottom: number): number {
+  const bottomPad =
+    Math.max(safeBottom, Platform.OS === 'android' ? 12 : 8) + FloatingTabMetrics.bottomGap;
+  return (
+    bottomPad +
+    FloatingTabMetrics.pillHeight +
+    FloatingTabMetrics.centerLift +
+    FloatingTabMetrics.contentBuffer
+  );
+}
+
 export const MaxContentWidth = 920;

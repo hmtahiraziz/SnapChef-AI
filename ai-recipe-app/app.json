@@ -47,7 +47,24 @@
         "expo-image-picker",
         {
           "cameraPermission": "Snap photos of ingredients to find recipes.",
-          "photosPermission": "Choose ingredient photos from your library."
+          "photosPermission": "Choose ingredient photos from your library.",
+          "microphonePermission": false,
+          "colors": {
+            "cropToolbarColor": "#8966FA",
+            "cropToolbarIconColor": "#FFFFFF",
+            "cropToolbarActionTextColor": "#FFFFFF",
+            "cropBackButtonIconColor": "#FFFFFF",
+            "cropBackgroundColor": "#0A0116"
+          },
+          "dark": {
+            "colors": {
+              "cropToolbarColor": "#8966FA",
+              "cropToolbarIconColor": "#FFFFFF",
+              "cropToolbarActionTextColor": "#FFFFFF",
+              "cropBackButtonIconColor": "#FFFFFF",
+              "cropBackgroundColor": "#0A0116"
+            }
+          }
         }
       ],
       [

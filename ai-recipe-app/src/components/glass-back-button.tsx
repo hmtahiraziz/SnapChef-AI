@@ -44,7 +44,8 @@ export function GlassBackButton({ onPress, topOffset = 8 }: GlassBackButtonProps
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    zIndex: 50,
+    zIndex: 100,
+    elevation: 100,
   },
   shadow: {
     borderRadius: 22,
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
-    elevation: 6,
+    elevation: 12,
   },
   circle: {
     width: 44,

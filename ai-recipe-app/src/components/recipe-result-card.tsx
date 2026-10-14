@@ -198,7 +198,9 @@ export function RecipeResultCard({
           ) : null}
 
           <View style={styles.footer}>
-            <Text style={[styles.seeRecipe, { color: theme.tint }]}>See recipe</Text>
+            <Text style={[styles.seeRecipe, { color: theme.tint }]} numberOfLines={1}>
+              See recipe
+            </Text>
             <View style={styles.seeBtn}>
               <Ionicons name="arrow-forward" size={16} color={SnapChef.white} />
             </View>
@@ -402,11 +404,13 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   seeRecipe: {
+    flex: 1,
     fontSize: 15,
     fontWeight: '800',
+    minWidth: 0,
   },
   seeBtn: {
     width: 40,
@@ -415,6 +419,8 @@ const styles = StyleSheet.create({
     backgroundColor: SnapChef.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+    marginLeft: 'auto',
     shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,

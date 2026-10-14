@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
     flex: 1, 
     gap: 6, 
     justifyContent: 'center',
+    minWidth: 0,
   },
   foodTitle: { 
     fontSize: 16, 
@@ -128,6 +129,8 @@ const styles = StyleSheet.create({
   },
   arrowWrap: { 
     justifyContent: 'center', 
-    alignItems: 'center', 
+    alignItems: 'center',
+    flexShrink: 0,
+    marginLeft: 'auto',
   },
 });

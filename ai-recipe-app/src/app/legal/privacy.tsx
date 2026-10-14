@@ -2,8 +2,9 @@ import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser'
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/screen-container';
+import { GlassCard } from '@/components/ui/glass-card';
 import { ENV, hasPrivacyPolicyUrl } from '@/constants/env';
-import { Spacing } from '@/constants/theme';
+import { Fonts, Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const SECTIONS: { title: string; body: string }[] = [
@@ -61,26 +62,49 @@ export default function PrivacyPolicyScreen() {
 
   return (
     <ScreenContainer scroll withTabInset={false} gradient edges={['bottom', 'left', 'right']}>
-      <Text style={[styles.updated, { color: theme.textSecondary }]}>Last updated: October 1, 2026</Text>
-      <Text style={[styles.intro, { color: theme.text }]}>
-        Please read this Privacy Policy before using SnapChef AI. By using the app, you agree to this policy.
+      <Text style={[styles.updated, { color: theme.textSecondary, fontFamily: Fonts.body }]}>
+        Last updated: October 1, 2026
+      </Text>
+      <Text style={[styles.intro, { color: theme.text, fontFamily: Fonts.bodyMedium }]}>
+        Please read this Privacy Policy before using SnapChef AI. By using the app, you agree to this
+        policy.
       </Text>
 
-      {SECTIONS.map((section) => (
-        <View key={section.title} style={styles.section}>
-          <Text style={[styles.heading, { color: theme.text }]}>{section.title}</Text>
-          <Text style={[styles.body, { color: theme.textSecondary }]}>{section.body}</Text>
-        </View>
-      ))}
+      <GlassCard tint="white">
+        {SECTIONS.map((section, index) => (
+          <View
+            key={section.title}
+            style={[
+              styles.section,
+              index < SECTIONS.length - 1
+                ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }
+                : null,
+            ]}>
+            <Text style={[styles.heading, { color: theme.text, fontFamily: Fonts.bodyBold }]}>
+              {section.title}
+            </Text>
+            <Text style={[styles.body, { color: theme.textSecondary, fontFamily: Fonts.body }]}>
+              {section.body}
+            </Text>
+          </View>
+        ))}
+      </GlassCard>
 
       {hasPrivacyPolicyUrl() ? (
         <Pressable
           onPress={() => void openHostedPolicy()}
-          style={[styles.linkBtn, { borderColor: theme.border }]}
+          style={[
+            styles.linkBtn,
+            {
+              borderColor: theme.border,
+              backgroundColor: theme.isDark ? theme.backgroundElement : '#FFFFFF',
+            },
+          ]}
           accessibilityRole="link"
-          accessibilityLabel="Open hosted privacy policy"
-        >
-          <Text style={[styles.linkText, { color: theme.tint }]}>View online version</Text>
+          accessibilityLabel="Open hosted privacy policy">
+          <Text style={[styles.linkText, { color: theme.tint, fontFamily: Fonts.bodyBold }]}>
+            View online version
+          </Text>
         </Pressable>
       ) : null}
     </ScreenContainer>
@@ -88,19 +112,41 @@ export default function PrivacyPolicyScreen() {
 }
 
 const styles = StyleSheet.create({
-  updated: { fontSize: 12, marginBottom: Spacing.one },
-  intro: { fontSize: 15, lineHeight: 22, marginBottom: Spacing.three, fontWeight: '600' },
-  section: { marginBottom: Spacing.three, gap: 6 },
-  heading: { fontSize: 16, fontWeight: '800' },
-  body: { fontSize: 14, lineHeight: 21 },
+  updated: {
+    fontSize: 12,
+    marginBottom: Spacing.one,
+  },
+  intro: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: Spacing.two,
+    fontWeight: '600',
+  },
+  section: {
+    width: '100%',
+    paddingVertical: Spacing.three,
+    gap: 6,
+  },
+  heading: {
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 22,
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
   linkBtn: {
     marginTop: Spacing.two,
     marginBottom: Spacing.four,
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 28,
+    borderRadius: Radii.pill,
     borderWidth: 1.5,
   },
-  linkText: { fontSize: 15, fontWeight: '700' },
+  linkText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });

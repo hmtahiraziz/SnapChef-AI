@@ -1,6 +1,14 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, View, Modal, Text } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  Modal,
+  Platform,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
 import { useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -27,6 +35,9 @@ export function IngredientCapture({
 }: IngredientCaptureProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  // Stack the buttons on very narrow screens or when the system font size is large
+  const stackButtons = windowWidth < 340 || fontScale > 1.3;
   const {
     phase,
     previewUri,
@@ -51,18 +62,21 @@ export function IngredientCapture({
   const aiReady = hasApiBaseUrl();
   const busy = isExtracting;
 
-  const runPick = useCallback(async (action: () => Promise<void>) => {
-    try {
-      setError(null);
-      await action();
-    } catch (captureError) {
-      const message =
-        captureError instanceof Error
-          ? captureError.message
-          : 'Something went wrong while opening the photo capture.';
-      setError(message);
-    }
-  }, [setError]);
+  const runPick = useCallback(
+    async (action: () => Promise<void>) => {
+      try {
+        setError(null);
+        await action();
+      } catch (captureError) {
+        const message =
+          captureError instanceof Error
+            ? captureError.message
+            : 'Something went wrong while opening the photo capture.';
+        setError(message);
+      }
+    },
+    [setError],
+  );
 
   // Wire initial action trigger (from navbar choice dialog)
   const isInitialTriggered = useRef(false);
@@ -103,12 +117,16 @@ export function IngredientCapture({
   return (
     <Modal
       visible={true}
-      animationType="slide"
+      animationType="fade"
       transparent={false}
       onRequestClose={handleBack}
     >
-      <View style={[styles.container, { paddingTop: Math.max(insets.top, 16), backgroundColor: theme.background }]}>
-
+      <View
+        style={[
+          styles.container,
+          { paddingTop: Math.max(insets.top, 16), backgroundColor: theme.background },
+        ]}
+      >
         {/* Header Block */}
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Pressable onPress={handleBack} style={styles.backBtn} accessibilityRole="button">
@@ -134,11 +152,12 @@ export function IngredientCapture({
           style={[
             styles.content,
             phase === 'preview' && styles.contentPreview,
-            { paddingBottom: phase === 'preview' ? Math.max(insets.bottom, Spacing.three) : Spacing.three },
+            {
+              paddingBottom: phase === 'preview' ? 0 : Spacing.three,
+            },
           ]}
         >
-
-          {/* 1. Idle Choice State (if user cancelled camera/picker or wants to choose again) */}
+          {/* 1. Idle Choice State */}
           {phase === 'idle' && (
             <View style={styles.idleContainer}>
               <View style={styles.idleIconWrap}>
@@ -146,7 +165,8 @@ export function IngredientCapture({
               </View>
               <Text style={[styles.idleTitle, { color: theme.text }]}>Identify Ingredients</Text>
               <Text style={[styles.idleDesc, { color: theme.textSecondary }]}>
-                Take a photo of your fridge ingredients or upload an image to extract them automatically using AI.
+                Take a photo of your fridge ingredients or upload an image to extract them
+                automatically using AI.
               </Text>
 
               <View style={styles.choiceButtons}>
@@ -156,7 +176,7 @@ export function IngredientCapture({
                   style={({ pressed }) => [
                     styles.choiceBtn,
                     pressed && styles.choiceBtnPressed,
-                    (!aiReady || busy) && styles.btnDisabled
+                    (!aiReady || busy) && styles.btnDisabled,
                   ]}
                 >
                   <Ionicons name="camera" size={26} color="#fff" />
@@ -170,7 +190,7 @@ export function IngredientCapture({
                     styles.choiceBtn,
                     styles.choiceBtnGallery,
                     pressed && styles.choiceBtnPressed,
-                    (!aiReady || busy) && styles.btnDisabled
+                    (!aiReady || busy) && styles.btnDisabled,
                   ]}
                 >
                   <Ionicons name="image" size={26} color="#fff" />
@@ -186,16 +206,13 @@ export function IngredientCapture({
 
               {error && !isExtracting ? (
                 <View style={styles.errorContainer}>
-                  <InlineError
-                    message={error}
-                    showOpenSettings={Boolean(permissionKind)}
-                  />
+                  <InlineError message={error} showOpenSettings={Boolean(permissionKind)} />
                 </View>
               ) : null}
             </View>
           )}
 
-          {/* 2. Photo Preview State (image captured/selected) */}
+          {/* 2. Photo Preview State */}
           {phase === 'preview' && previewUri ? (
             <View style={styles.previewContainer}>
               <View style={styles.previewStage}>
@@ -203,8 +220,8 @@ export function IngredientCapture({
                   style={[
                     styles.previewFrame,
                     {
-                      backgroundColor: theme.isDark ? '#121218' : '#14131A',
-                      borderColor: theme.isDark ? theme.border : 'rgba(137,102,250,0.16)',
+                      backgroundColor: theme.isDark ? '#121218' : '#F4F1FA',
+                      borderColor: theme.isDark ? theme.border : 'rgba(137,102,250,0.14)',
                     },
                   ]}
                 >
@@ -215,16 +232,34 @@ export function IngredientCapture({
                     transition={180}
                   />
                 </View>
-
-                <View style={styles.previewMeta}>
-                  <Text style={[styles.previewReady, { color: theme.text }]}>Photo ready</Text>
-                  <Text style={[styles.previewHint, { color: theme.textSecondary }]}>
-                    Bright, uncluttered shots work best. Retake if anything looks blurry.
-                  </Text>
-                </View>
               </View>
 
-              <View style={styles.previewFooter}>
+              <View
+                style={[
+                  styles.previewFooter,
+                  {
+                    backgroundColor: theme.isDark ? theme.backgroundElement : '#FFFFFF',
+                    // Extra space so the buttons never touch the system navigation bar
+                    paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 40 : 18) + 12,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.readyBadge,
+                    {
+                      backgroundColor: theme.isDark ? 'rgba(47, 107, 79, 0.22)' : '#E8F8EF',
+                    },
+                  ]}
+                >
+                  <Ionicons name="checkmark-circle" size={15} color="#2F6B4F" />
+                  <Text style={styles.readyBadgeText}>Photo ready</Text>
+                </View>
+
+                <Text style={[styles.previewHint, { color: theme.textSecondary }]}>
+                  Bright, uncluttered shots work best. Retake if anything looks blurry.
+                </Text>
+
                 {error && !isExtracting ? (
                   <View style={styles.errorContainer}>
                     <InlineError
@@ -236,50 +271,47 @@ export function IngredientCapture({
                   </View>
                 ) : null}
 
-                <View style={styles.previewActions}>
-                  <Pressable
-                    onPress={() => void scanPendingPhoto()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Scan ingredients"
-                    style={({ pressed }) => [
-                      styles.primaryCta,
-                      pressed && styles.ctaPressed,
-                    ]}
-                  >
-                    <LinearGradient
-                      colors={[SnapChef.primary, '#6B4FE0']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.primaryCtaFill}
+                <View style={[styles.previewActions, stackButtons && styles.previewActionsStacked]}>
+                  <View style={[styles.retakeWrap, stackButtons && styles.wrapStacked]}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={retake}
+                      accessibilityRole="button"
+                      accessibilityLabel="Retake photo"
+                      style={[
+                        styles.retakeBtn,
+                        {
+                          backgroundColor: theme.isDark ? 'rgba(137, 102, 250, 0.16)' : '#F3EEFF',
+                          borderColor: theme.isDark ? 'rgba(180, 155, 255, 0.55)' : '#DCD0FF',
+                        },
+                      ]}
                     >
-                      <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-                      <Text style={styles.primaryCtaText}>Scan ingredients</Text>
-                    </LinearGradient>
-                  </Pressable>
+                      <Ionicons name="camera-outline" size={18} color="#8966FA" />
+                      <Text style={styles.retakeBtnText} numberOfLines={1} maxFontSizeMultiplier={1.15}>
+                        Retake photo
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
 
-                  <Pressable
-                    onPress={retake}
-                    accessibilityRole="button"
-                    accessibilityLabel="Retake photo"
-                    style={({ pressed }) => [
-                      styles.secondaryCta,
-                      {
-                        backgroundColor: theme.isDark ? theme.backgroundSelected : '#F5F2FC',
-                        borderColor: theme.isDark ? theme.border : SnapChef.lavender,
-                      },
-                      pressed && styles.ctaPressed,
-                    ]}
-                  >
-                    <View style={styles.secondaryCtaRow}>
-                      <Ionicons name="camera-reverse-outline" size={18} color={SnapChef.primary} />
-                      <Text style={styles.secondaryCtaText}>Retake photo</Text>
-                    </View>
-                  </Pressable>
+                  <View style={[styles.analyzeWrap, stackButtons && styles.wrapStacked]}>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => void scanPendingPhoto()}
+                      accessibilityRole="button"
+                      accessibilityLabel="Analyze and cook"
+                      style={styles.analyzeBtn}
+                    >
+                      <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                      <Text style={styles.analyzeBtnText} numberOfLines={1} maxFontSizeMultiplier={1.15}>
+                        Analyze & Cook
+                      </Text>
+                      <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>
           ) : null}
-
         </View>
 
         {isExtracting ? (
@@ -296,7 +328,6 @@ export function IngredientCapture({
           onConfirm={handleConfirmReview}
           onCancel={cancelReview}
         />
-
       </View>
     </Modal>
   );
@@ -364,6 +395,8 @@ const styles = StyleSheet.create({
   },
   contentPreview: {
     justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+    paddingTop: Spacing.two,
   },
   idleContainer: {
     alignItems: 'center',
@@ -430,85 +463,129 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     flex: 1,
-    justifyContent: 'space-between',
-    gap: Spacing.three,
+    minHeight: 0,
+    width: '100%',
   },
   previewStage: {
     flex: 1,
-    gap: Spacing.three,
     minHeight: 0,
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   previewFrame: {
     flex: 1,
-    borderRadius: Radii.card,
+    width: '100%',
+    minHeight: 160,
+    borderRadius: 22,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    minHeight: 280,
   },
   previewImage: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
-  previewMeta: {
-    gap: 4,
+  previewFooter: {
+    width: '100%',
+    flexGrow: 0,
+    flexShrink: 0,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    shadowColor: '#0A0116',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  readyBadge: {
+    alignSelf: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.two,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    marginBottom: 10,
   },
-  previewReady: {
-    fontSize: 16,
+  readyBadgeText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#2F6B4F',
   },
   previewHint: {
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 19,
     textAlign: 'center',
-  },
-  previewFooter: {
-    gap: Spacing.three,
+    paddingHorizontal: 8,
+    marginBottom: 14,
   },
   previewActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     width: '100%',
+    gap: 12,
+  },
+  previewActionsStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 10,
   },
-  primaryCta: {
+  wrapStacked: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
     width: '100%',
-    height: 54,
-    borderRadius: Radii.pill,
-    overflow: 'hidden',
   },
-  primaryCtaFill: {
-    flex: 1,
+  retakeWrap: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+  },
+  analyzeWrap: {
+    flexGrow: 1.45,
+    flexShrink: 1,
+    flexBasis: 0,
+  },
+  retakeBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
   },
-  primaryCtaText: {
+  analyzeBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#7C3AED',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  retakeBtnText: {
+    color: '#8966FA',
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  analyzeBtnText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  secondaryCta: {
-    width: '100%',
-    height: 50,
-    borderRadius: Radii.pill,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryCtaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  secondaryCtaText: {
-    color: SnapChef.primary,
-    fontSize: 15,
-    fontWeight: '700',
+    marginHorizontal: 6,
   },
   ctaPressed: {
     opacity: 0.9,
@@ -516,5 +593,6 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     width: '100%',
+    marginBottom: 10,
   },
 });

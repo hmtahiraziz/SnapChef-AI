@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   Platform,
-  Modal,
   useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -24,19 +23,20 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Fonts, Radii, SnapChef } from '@/constants/theme';
+import { BottomSheetModal } from '@/components/ui/bottom-sheet-modal';
+import { FloatingTabMetrics, Fonts, Radii, SnapChef } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** Fixed mobile metrics — mock-accurate, not over-responsive. */
-const PILL_HEIGHT = 68;
+/** Fixed mobile metrics — keep in sync with `FloatingTabMetrics` / ScreenContainer inset. */
+const PILL_HEIGHT = FloatingTabMetrics.pillHeight;
 const PILL_MAX_WIDTH = 420;
 const PILL_PAD_H = 6;
 const CENTER_SIZE = 56;
-const CENTER_LIFT = -16;
+const CENTER_LIFT = -FloatingTabMetrics.centerLift;
 const ICON_SIZE = 22;
 const LABEL_SIZE = 11;
 const HORIZONTAL_INSET = 18;
-const BOTTOM_GAP = 10;
+const BOTTOM_GAP = FloatingTabMetrics.bottomGap;
 
 const FOCUS_TIMING = {
   duration: 240,
@@ -138,17 +138,28 @@ function TabItem({
     transform: [{ translateY: interpolate(progress.value, [0, 1], [1, 0]) }],
   }));
 
+  const centerScale = useSharedValue(1);
+  const centerPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: centerScale.value }],
+  }));
+
   if (isCenter) {
     return (
       <Pressable
+        onPressIn={() => {
+          centerScale.value = withTiming(0.94, { duration: 90 });
+        }}
+        onPressOut={() => {
+          centerScale.value = withTiming(1, { duration: 140 });
+        }}
         onPress={onPress}
         style={styles.centerWrap}
         accessibilityRole="button"
         accessibilityLabel="AI Scan"
       >
-        <View style={styles.centerBtn}>
+        <Animated.View style={[styles.centerBtn, centerPulseStyle]}>
           <Ionicons name="sparkles" size={24} color={SnapChef.white} />
-        </View>
+        </Animated.View>
       </Pressable>
     );
   }
@@ -216,11 +227,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
 
   const menuMetrics = useMemo(
     () => ({
-      pad: isCompact ? 18 : 24,
-      icon: isCompact ? 56 : 64,
-      gap: isCompact ? 20 : 32,
-      btnWidth: isCompact ? 88 : 100,
-      titleSize: isCompact ? 17 : 19,
+      pad: isCompact ? 22 : 28,
+      icon: isCompact ? 72 : 80,
+      gap: isCompact ? 28 : 40,
+      btnWidth: isCompact ? 120 : 132,
+      titleSize: isCompact ? 22 : 24,
+      iconGlyph: isCompact ? 30 : 34,
     }),
     [isCompact],
   );
@@ -279,109 +291,139 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         },
       ]}
     >
-      <Modal
+      <BottomSheetModal
         visible={showScanMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowScanMenu(false)}
-      >
-        <Pressable
-          style={[styles.modalOverlay, { paddingBottom: scanSheetBottomInset }]}
-          onPress={() => setShowScanMenu(false)}
-        >
+        onClose={() => setShowScanMenu(false)}
+        clearFloatingTabBar={false}
+        overlayColor={isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(10, 1, 22, 0.45)'}
+        sheetStyle={[
+          styles.menuCard,
+          {
+            backgroundColor: isDark ? theme.backgroundElement : '#FFFFFF',
+            borderColor: isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.9)',
+            paddingHorizontal: menuMetrics.pad,
+            paddingTop: 12,
+            paddingBottom: menuMetrics.pad,
+            marginBottom: scanSheetBottomInset,
+            alignSelf: 'center',
+            width: isCompact ? '92%' : '88%',
+          },
+        ]}>
+        <View style={[styles.dragIndicator, { backgroundColor: isDark ? theme.border : '#D9D4E3' }]} />
+
+        <View
+          style={[
+            styles.visionBadge,
+            {
+              backgroundColor: isDark ? 'rgba(137, 102, 250, 0.22)' : 'rgba(137, 102, 250, 0.12)',
+            },
+          ]}>
+          <Ionicons name="sparkles" size={12} color={SnapChef.primary} />
+          <Text style={[styles.visionBadgeText, { color: SnapChef.primary }]}>
+            SMART PANTRY VISION
+          </Text>
+        </View>
+
+        <Text style={[styles.menuTitle, { color: theme.text, fontSize: menuMetrics.titleSize }]}>
+          Analyze Ingredients
+        </Text>
+        <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
+          Choose photo source to scan ingredients with AI
+        </Text>
+
+        <View style={[styles.menuRow, { gap: menuMetrics.gap }]}>
           <Pressable
             onPress={() => {
-              /* Absorb presses so the overlay dismiss handler does not fire. */
+              setShowScanMenu(false);
+              router.push({
+                pathname: '/(tabs)',
+                params: { openCamera: 'true', time: Date.now().toString() },
+              });
             }}
-            style={[
-              styles.menuCard,
-              {
-                backgroundColor: isDark ? theme.backgroundElement : 'rgba(255, 255, 255, 0.98)',
-                borderColor: isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.85)',
-                padding: menuMetrics.pad,
-                width: isCompact ? '94%' : '90%',
-              },
-            ]}
-          >
-            <View style={[styles.dragIndicator, { backgroundColor: theme.border }]} />
-            <Text style={[styles.menuTitle, { color: theme.text, fontSize: menuMetrics.titleSize }]}>
-              Analyze Ingredients
-            </Text>
-            <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
-              Choose photo source to scan ingredients with AI
-            </Text>
-
-            <View style={[styles.menuRow, { gap: menuMetrics.gap }]}>
-              <Pressable
-                onPress={() => {
-                  setShowScanMenu(false);
-                  router.push({
-                    pathname: '/(tabs)',
-                    params: { openCamera: 'true', time: Date.now().toString() },
-                  });
-                }}
-                style={({ pressed }) => [
-                  styles.menuBtn,
-                  { width: menuMetrics.btnWidth },
-                  pressed && styles.menuBtnPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.menuIconCircle,
-                    {
-                      backgroundColor: SnapChef.primary,
-                      width: menuMetrics.icon,
-                      height: menuMetrics.icon,
-                      borderRadius: menuMetrics.icon / 2,
-                    },
-                  ]}
-                >
-                  <Ionicons name="camera" size={isCompact ? 22 : 26} color={SnapChef.white} />
-                </View>
-                <Text style={[styles.menuBtnText, { color: theme.text }]}>Take Photo</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  setShowScanMenu(false);
-                  router.push({
-                    pathname: '/(tabs)',
-                    params: { openGallery: 'true', time: Date.now().toString() },
-                  });
-                }}
-                style={({ pressed }) => [
-                  styles.menuBtn,
-                  { width: menuMetrics.btnWidth },
-                  pressed && styles.menuBtnPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.menuIconCircle,
-                    {
-                      backgroundColor: '#34D399',
-                      width: menuMetrics.icon,
-                      height: menuMetrics.icon,
-                      borderRadius: menuMetrics.icon / 2,
-                    },
-                  ]}
-                >
-                  <Ionicons name="image" size={isCompact ? 22 : 26} color={SnapChef.white} />
-                </View>
-                <Text style={[styles.menuBtnText, { color: theme.text }]}>Upload Photo</Text>
-              </Pressable>
+            accessibilityRole="button"
+            accessibilityLabel="Take photo with camera"
+            style={({ pressed }) => [
+              styles.menuBtn,
+              { width: menuMetrics.btnWidth },
+              pressed && styles.menuBtnPressed,
+            ]}>
+            <View
+              style={[
+                styles.menuIconCircle,
+                {
+                  backgroundColor: SnapChef.primary,
+                  width: menuMetrics.icon,
+                  height: menuMetrics.icon,
+                  borderRadius: menuMetrics.icon / 2,
+                  shadowColor: SnapChef.primary,
+                },
+              ]}>
+              <Ionicons name="camera" size={menuMetrics.iconGlyph} color={SnapChef.white} />
             </View>
-
-            <Pressable
-              style={[styles.menuCloseBtn, { borderTopColor: theme.border }]}
-              onPress={() => setShowScanMenu(false)}
-            >
-              <Text style={[styles.menuCloseText, { color: SnapChef.primary }]}>Cancel</Text>
-            </Pressable>
+            <Text style={[styles.menuBtnText, { color: theme.text }]}>Take Photo</Text>
+            <Text style={[styles.menuBtnSubtext, { color: theme.textSecondary }]}>Camera lens</Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setShowScanMenu(false);
+              router.push({
+                pathname: '/(tabs)',
+                params: { openGallery: 'true', time: Date.now().toString() },
+              });
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Upload photo from gallery"
+            style={({ pressed }) => [
+              styles.menuBtn,
+              { width: menuMetrics.btnWidth },
+              pressed && styles.menuBtnPressed,
+            ]}>
+            <View
+              style={[
+                styles.menuIconCircle,
+                {
+                  backgroundColor: '#1F8A5B',
+                  width: menuMetrics.icon,
+                  height: menuMetrics.icon,
+                  borderRadius: menuMetrics.icon / 2,
+                  shadowColor: '#1F8A5B',
+                },
+              ]}>
+              <Ionicons name="images" size={menuMetrics.iconGlyph} color={SnapChef.white} />
+            </View>
+            <Text style={[styles.menuBtnText, { color: theme.text }]}>Upload Photo</Text>
+            <Text style={[styles.menuBtnSubtext, { color: theme.textSecondary }]}>Device gallery</Text>
+          </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.tipCard,
+            {
+              backgroundColor: isDark ? 'rgba(137, 102, 250, 0.16)' : '#F3EEFF',
+            },
+          ]}>
+          <View
+            style={[
+              styles.tipIconWrap,
+              { backgroundColor: isDark ? 'rgba(137, 102, 250, 0.28)' : 'rgba(137, 102, 250, 0.18)' },
+            ]}>
+            <Ionicons name="bulb" size={16} color={SnapChef.primary} />
+          </View>
+          <Text style={[styles.tipText, { color: theme.textSecondary }]}>
+            Tip: Spread spices and open fridge crisper drawers for 99% recognition accuracy.
+          </Text>
+        </View>
+
+        <Pressable
+          style={styles.menuCloseBtn}
+          onPress={() => setShowScanMenu(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel">
+          <Text style={[styles.menuCloseText, { color: SnapChef.primary }]}>Cancel</Text>
         </Pressable>
-      </Modal>
+      </BottomSheetModal>
 
       <View style={styles.pillShadow}>
         <View
@@ -504,7 +546,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 8,
     bottom: 8,
-    borderRadius: 22,
+    borderRadius: 12,
     zIndex: 0,
   },
   itemWrap: {
@@ -575,75 +617,115 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(10, 1, 22, 0.48)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
   menuCard: {
-    maxWidth: 380,
-    borderRadius: Radii.card,
+    maxWidth: 400,
+    borderRadius: 28,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 16,
-    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    elevation: 18,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   dragIndicator: {
-    width: 36,
+    width: 40,
     height: 4,
     borderRadius: 2,
-    marginBottom: 16,
+    marginBottom: 18,
+  },
+  visionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 14,
+  },
+  visionBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   menuTitle: {
     fontWeight: '800',
-    marginBottom: 6,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   menuSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 24,
+    lineHeight: 20,
+    marginBottom: 28,
+    paddingHorizontal: 8,
   },
   menuRow: {
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 22,
   },
   menuBtn: {
     alignItems: 'center',
   },
   menuBtnPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.95 }],
+    opacity: 0.86,
+    transform: [{ scale: 0.96 }],
   },
   menuIconCircle: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
   },
   menuBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  menuBtnSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  tipCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  tipIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  tipText: {
+    flex: 1,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '500',
+    lineHeight: 18,
   },
   menuCloseBtn: {
     width: '100%',
     paddingVertical: 14,
-    borderTopWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuCloseText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
 });

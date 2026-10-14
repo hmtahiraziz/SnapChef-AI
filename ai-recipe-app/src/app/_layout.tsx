@@ -16,6 +16,7 @@ import { View, Text, StyleSheet, Platform, StatusBar } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/splash-overlay';
 import { BootProvider, useBoot } from '@/context/BootContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
+import { IngredientsProvider } from '@/context/IngredientsContext';
 import { PreferencesProvider } from '@/context/PreferencesContext';
 import { ShoppingListProvider } from '@/context/ShoppingListContext';
 import { Colors, Fonts } from '@/constants/theme';
@@ -325,10 +326,12 @@ function RootNavigation() {
       <BootProvider>
         <FavoritesProvider>
           <ShoppingListProvider>
-            <AnimatedSplashOverlay />
-            <ClerkLoaded>
-              <AuthGate />
-            </ClerkLoaded>
+            <IngredientsProvider>
+              <AnimatedSplashOverlay />
+              <ClerkLoaded>
+                <AuthGate />
+              </ClerkLoaded>
+            </IngredientsProvider>
           </ShoppingListProvider>
         </FavoritesProvider>
       </BootProvider>

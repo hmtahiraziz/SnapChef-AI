@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { Platform } from 'react-native';
 import { useCallback, useRef, useState } from 'react';
 
 import { extractIngredientsFromImage } from '../services/visionApi';
@@ -55,20 +56,24 @@ export function useIngredientCapture() {
       throw new PermissionDeniedError(source === 'camera' ? 'camera' : 'library');
     }
 
+    /**
+     * Native crop UI (Android CropImage / iOS editor).
+     * Android toolbar colors come from the expo-image-picker config plugin in app.json
+     * so flip/crop icons stay white (food-app style), not black-on-dark.
+     */
+    const pickerOptions: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      quality: 0.9,
+      allowsEditing: true,
+      aspect: [4, 3],
+      allowsMultipleSelection: false,
+      ...(Platform.OS === 'android' ? { shape: 'rectangle' as const } : null),
+    };
+
     const result =
       source === 'camera'
-        ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            quality: 0.85,
-            allowsEditing: true,
-            aspect: [4, 3],
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            quality: 0.85,
-            allowsEditing: true,
-            aspect: [4, 3],
-          });
+        ? await ImagePicker.launchCameraAsync(pickerOptions)
+        : await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
     if (result.canceled || !result.assets[0]) {
       return;

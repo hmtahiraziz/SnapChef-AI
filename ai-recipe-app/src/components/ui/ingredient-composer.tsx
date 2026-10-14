@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -18,26 +19,21 @@ type IngredientComposerProps = {
   ingredients: string[];
   onAddMany: (names: string[]) => void;
   onRemove: (name: string) => void;
+  onRename?: (from: string, to: string) => void;
 };
 
 export function IngredientComposer({
   ingredients,
   onAddMany,
   onRemove,
+  onRename,
 }: IngredientComposerProps) {
   const theme = useTheme();
   const [draft, setDraft] = useState('');
-  const [open, setOpen] = useState(true);
   const [focused, setFocused] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const inputRef = useRef<TextInputType>(null);
   const canSubmit = draft.trim().length > 0;
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => inputRef.current?.focus(), 80);
-    return () => clearTimeout(timer);
-  }, [open]);
 
   useEffect(() => {
     if (!hint) return;
@@ -86,117 +82,107 @@ export function IngredientComposer({
     <View style={styles.root}>
       <View style={styles.headerRow}>
         <Text style={[styles.label, { color: theme.text }]}>Ingredients</Text>
-        {ingredients.length > 0 ? (
-          <Text style={[styles.count, { color: theme.textSecondary }]}>{ingredients.length} added</Text>
-        ) : null}
+        <View
+          style={[
+            styles.countPill,
+            {
+              backgroundColor: theme.isDark
+                ? 'rgba(137, 102, 250, 0.2)'
+                : 'rgba(137, 102, 250, 0.12)',
+            },
+          ]}>
+          <Text style={[styles.count, { color: theme.tint }]}>
+            {ingredients.length} added
+          </Text>
+        </View>
       </View>
 
       {ingredients.length > 0 ? (
         <View style={styles.chipRow}>
           {ingredients.map((item) => (
-            <IngredientChip key={item} label={item} onRemove={() => onRemove(item)} />
+            <IngredientChip
+              key={item}
+              label={item}
+              onRemove={() => onRemove(item)}
+              onRename={onRename ? (next) => onRename(item, next) : undefined}
+            />
           ))}
         </View>
       ) : null}
 
-      {!open ? (
-        <IngredientChip
-          label="Add ingredient"
-          dashed
-          onPress={() => setOpen(true)}
-        />
-      ) : (
-        <View style={styles.composerBlock}>
-          <View
-            style={[
-              styles.composer,
-              {
-                backgroundColor: theme.isDark ? theme.field : '#FFFFFF',
-                borderColor: focused ? theme.tint : theme.fieldBorder,
-              },
-              focused && styles.composerFocused,
-            ]}>
-            <View
-              style={[
-                styles.leadingIcon,
-                { backgroundColor: theme.isDark ? theme.backgroundSelected : '#F3F0FF' },
-              ]}>
-              <Ionicons name="leaf-outline" size={18} color={theme.tint} />
-            </View>
-
-            <TextInput
-              ref={inputRef}
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="e.g. chicken, onion, tomato"
-              placeholderTextColor={theme.isDark ? 'rgba(243,242,247,0.35)' : 'rgba(10, 1, 22, 0.38)'}
-              style={[styles.input, { color: theme.text }]}
-              onSubmitEditing={submit}
-              returnKeyType="done"
-              blurOnSubmit={false}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              accessibilityLabel="Ingredient name"
-            />
-
-            {canSubmit ? (
-              <Pressable
-                onPress={() => setDraft('')}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Clear input"
-                style={styles.clearBtn}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-              </Pressable>
-            ) : null}
-
-            <Pressable
-              onPress={submit}
-              disabled={!canSubmit}
-              accessibilityRole="button"
-              accessibilityLabel="Add ingredient"
-              style={({ pressed }) => [
-                styles.addBtnWrap,
-                !canSubmit && styles.addBtnWrapDisabled,
-                pressed && canSubmit && styles.addBtnPressed,
-              ]}>
-              <LinearGradient
-                colors={
-                  canSubmit
-                    ? [SnapChef.primary, '#603FEF']
-                    : theme.isDark
-                      ? ['#3A3A48', '#2E2E3A']
-                      : ['#D8D2E8', '#C8C0D8']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.addBtn}>
-                <View style={styles.addBtnHighlight} pointerEvents="none" />
-                <Ionicons name="add" size={22} color="#fff" />
-              </LinearGradient>
-            </Pressable>
-          </View>
-
-          <View style={styles.footerRow}>
-            <Text style={[styles.helper, { color: theme.textSecondary }]}>
-              {hint ?? 'Separate multiple with commas · press Add or Done'}
-            </Text>
-            <Pressable
-              onPress={() => {
-                setOpen(false);
-                setDraft('');
-                setHint(null);
-              }}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Done adding ingredients"
-              style={styles.doneBtn}>
-              <Text style={[styles.doneText, { color: theme.tint }]}>Done</Text>
-              <Ionicons name="chevron-up" size={14} color={theme.tint} />
-            </Pressable>
-          </View>
+      <View
+        style={[
+          styles.composer,
+          {
+            backgroundColor: theme.isDark ? theme.field : '#FFFFFF',
+            borderColor: focused ? theme.tint : theme.isDark ? theme.fieldBorder : 'rgba(137, 102, 250, 0.14)',
+          },
+          focused && styles.composerFocused,
+        ]}>
+        <View
+          style={[
+            styles.leadingIcon,
+            { backgroundColor: theme.isDark ? theme.backgroundSelected : '#F3F0FF' },
+          ]}>
+          <Ionicons name="leaf-outline" size={18} color={theme.tint} />
         </View>
-      )}
+
+        <TextInput
+          ref={inputRef}
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Search ingredients"
+          placeholderTextColor={theme.isDark ? 'rgba(243,242,247,0.35)' : 'rgba(10, 1, 22, 0.38)'}
+          style={[styles.input, { color: theme.text }]}
+          onSubmitEditing={submit}
+          returnKeyType="done"
+          blurOnSubmit={false}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          accessibilityLabel="Ingredient name"
+        />
+
+        {canSubmit ? (
+          <Pressable
+            onPress={() => setDraft('')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Clear input"
+            style={styles.clearBtn}>
+            <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          onPress={submit}
+          disabled={!canSubmit}
+          accessibilityRole="button"
+          accessibilityLabel="Add ingredient"
+          style={({ pressed }) => [
+            styles.addBtnWrap,
+            !canSubmit && styles.addBtnWrapDisabled,
+            pressed && canSubmit && styles.addBtnPressed,
+          ]}>
+          <LinearGradient
+            colors={
+              canSubmit
+                ? [SnapChef.primary, '#603FEF']
+                : theme.isDark
+                  ? ['#3A3A48', '#2E2E3A']
+                  : [SnapChef.primary, '#603FEF']
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.addBtn, !canSubmit && styles.addBtnIdle]}>
+            <View style={styles.addBtnHighlight} pointerEvents="none" />
+            <Ionicons name="add" size={18} color="#fff" />
+          </LinearGradient>
+        </Pressable>
+      </View>
+
+      <Text style={[styles.helper, { color: theme.textSecondary }]}>
+        {hint ?? 'Separate with commas · tap name to edit · tap Add'}
+      </Text>
     </View>
   );
 }
@@ -211,27 +197,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    opacity: 0.9,
+  },
+  countPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   count: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  composerBlock: {
-    gap: 8,
-  },
   composer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minHeight: 52,
+    minHeight: 54,
     paddingLeft: 12,
     paddingRight: 6,
     paddingVertical: 6,
@@ -242,6 +229,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 1,
+    ...Platform.select({
+      web: { display: 'flex' as const },
+      default: {},
+    }),
   },
   composerFocused: {
     shadowOpacity: 0.14,
@@ -267,24 +258,27 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   addBtnWrap: {
-    borderRadius: 16,
+    borderRadius: 12,
     shadowColor: SnapChef.primary,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.32,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addBtnWrapDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
+    shadowOpacity: 0.12,
+    elevation: 1,
   },
   addBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  addBtnIdle: {
+    opacity: 0.88,
   },
   addBtnHighlight: {
     ...StyleSheet.absoluteFillObject,
@@ -295,28 +289,10 @@ const styles = StyleSheet.create({
     opacity: 0.92,
     transform: [{ scale: 0.96 }],
   },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingHorizontal: 2,
-  },
   helper: {
-    flex: 1,
     fontSize: 11,
     fontWeight: '500',
     lineHeight: 15,
-  },
-  doneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  doneText: {
-    fontSize: 12,
-    fontWeight: '700',
+    paddingHorizontal: 2,
   },
 });

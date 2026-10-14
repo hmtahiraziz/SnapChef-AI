@@ -1,25 +1,26 @@
 import { router, type Href } from 'expo-router';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
 import Constants from 'expo-constants';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { GlassCard } from '@/components/ui/glass-card';
 import { ThemedText } from '@/components/themed-text';
+import { useIngredientsContext } from '@/context/IngredientsContext';
 import { usePreferences } from '@/context/PreferencesContext';
 import { useShoppingList } from '@/context/ShoppingListContext';
 import { SettingsRow } from '@/features/settings';
-import { Spacing } from '@/constants/theme';
 
 export default function PreferencesScreen() {
   const { country, resetToDefaults } = usePreferences();
   const { clearAll } = useShoppingList();
+  const { clearIngredients } = useIngredientsContext();
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const handleClearLocalData = () => {
     Alert.alert(
       'Clear local data?',
-      'This clears your shopping list and resets cuisine preferences on this device. Favorites are kept.',
+      'This clears your shopping list, kitchen ingredients, and resets cuisine preferences on this device. Favorites are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -28,8 +29,9 @@ export default function PreferencesScreen() {
           onPress: () => {
             void (async () => {
               await clearAll();
+              clearIngredients();
               await resetToDefaults();
-              Alert.alert('Done', 'Local preferences and shopping list were cleared.');
+              Alert.alert('Done', 'Local preferences, ingredients, and shopping list were cleared.');
             })();
           },
         },
@@ -44,33 +46,23 @@ export default function PreferencesScreen() {
       </ThemedText>
 
       <GlassCard tint="lavender" padded={false}>
-        <View style={styles.pad}>
-          <SettingsRow
-            label="Default cuisine"
-            value={country}
-            onPress={() => router.push('/preferences/cuisine' as Href)}
-            showDivider={false}
-          />
-        </View>
+        <SettingsRow
+          label="Default cuisine"
+          value={country}
+          onPress={() => router.push('/preferences/cuisine' as Href)}
+          showDivider={false}
+        />
       </GlassCard>
 
       <GlassCard tint="white" padded={false}>
-        <View style={styles.pad}>
-          <SettingsRow label="Clear local data" destructive onPress={handleClearLocalData} />
-          <SettingsRow
-            label="App version"
-            value={appVersion}
-            showChevron={false}
-            showDivider={false}
-          />
-        </View>
+        <SettingsRow label="Clear local data" destructive onPress={handleClearLocalData} />
+        <SettingsRow
+          label="App version"
+          value={appVersion}
+          showChevron={false}
+          showDivider={false}
+        />
       </GlassCard>
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  pad: {
-    paddingHorizontal: Spacing.three,
-  },
-});
