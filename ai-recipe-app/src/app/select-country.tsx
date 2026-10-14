@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
@@ -63,7 +63,6 @@ export default function SelectCountryScreen() {
         <View style={styles.header}>
           <View style={styles.brandRow}>
             <BrandMark size={40} tone="light" />
-            <Text style={styles.eyebrow}>{BRAND_NAME}</Text>
           </View>
 
           <Text style={styles.title}>Choose your cuisine</Text>
@@ -99,7 +98,11 @@ export default function SelectCountryScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.cta}
           >
-            <Text style={styles.ctaText}>{saving ? 'Saving…' : 'Continue'}</Text>
+            {saving ? (
+              <ActivityIndicator color={SnapChef.white} />
+            ) : (
+              <Text style={styles.ctaText}>Continue</Text>
+            )}
           </LinearGradient>
         </Pressable>
       </View>

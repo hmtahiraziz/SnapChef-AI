@@ -1,44 +1,40 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
-import { BrandMark } from '@/components/brand-mark';
-import { GenerateRecipeCard } from '@/components/generate-recipe-card';
-import { ScreenContainer } from '@/components/screen-container';
-import { EmptyState } from '@/components/ui/empty-state';
-import { FavoriteRecipeCard } from '@/components/ui/favorite-recipe-card';
-import { IngredientComposer } from '@/components/ui/ingredient-composer';
-import { SectionHeader } from '@/components/ui/section-header';
-import { hasApiBaseUrl } from '@/constants/env';
-import { SnapChef, Spacing } from '@/constants/theme';
-import { useFavorites } from '@/context/FavoritesContext';
-import { usePreferences } from '@/context/PreferencesContext';
-import { IngredientCapture, useIngredients } from '@/features/scan';
-import { CountryDropdown } from '@/features/settings';
-import { useTheme } from '@/hooks/use-theme';
+import { BrandMark } from "@/components/brand-mark";
+import { GenerateRecipeCard } from "@/components/generate-recipe-card";
+import { ScreenContainer } from "@/components/screen-container";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FavoriteRecipeCard } from "@/components/ui/favorite-recipe-card";
+import { IngredientComposer } from "@/components/ui/ingredient-composer";
+import { SectionHeader } from "@/components/ui/section-header";
+import { hasApiBaseUrl } from "@/constants/env";
+import { SnapChef, Spacing } from "@/constants/theme";
+import { useFavorites } from "@/context/FavoritesContext";
+import { usePreferences } from "@/context/PreferencesContext";
+import { IngredientCapture, useIngredients } from "@/features/scan";
+import { CountryDropdown } from "@/features/settings";
+import { useTheme } from "@/hooks/use-theme";
 
-type ScanSource = 'camera' | 'gallery' | null;
+type ScanSource = "camera" | "gallery" | null;
 
 function formatTime(prep?: number, cook?: number): string {
   const total = (prep ?? 0) + (cook ?? 0);
-  return total > 0 ? `${total} min` : 'Time varies';
+  return total > 0 ? `${total} min` : "Time varies";
 }
 
 function greetingForHour(hours: number): string {
-  if (hours < 12) return 'Good morning';
-  if (hours < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hours < 12) return "Good morning";
+  if (hours < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 export default function HomeScreen() {
-  const { ingredients, mergeIngredients, removeIngredient, renameIngredient } = useIngredients();
+  const { ingredients, mergeIngredients, removeIngredient, renameIngredient } =
+    useIngredients();
   const { country, setCountry } = usePreferences();
   const { favorites, removeFavorite } = useFavorites();
   const theme = useTheme();
@@ -56,10 +52,12 @@ export default function HomeScreen() {
   const greeting = greetingForHour(new Date().getHours());
 
   const craftColors = isDark
-    ? (['#1A1A24', '#121218'] as const)
-    : (['#EBE5FF', '#C7B5FD'] as const);
-  const craftBorderColor = isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.5)';
-  const wandBgColor = isDark ? theme.backgroundSelected : '#ffffff';
+    ? (["#1A1A24", "#121218"] as const)
+    : (["#EBE5FF", "#C7B5FD"] as const);
+  const craftBorderColor = isDark
+    ? theme.cardBorder
+    : "rgba(255, 255, 255, 0.5)";
+  const wandBgColor = isDark ? theme.backgroundSelected : "#ffffff";
 
   const openScan = useCallback((source: ScanSource = null) => {
     setInitialAction(source);
@@ -86,13 +84,13 @@ export default function HomeScreen() {
   }, [ingredients.length]);
 
   useEffect(() => {
-    if (openCamera === 'true') {
-      openScan('camera');
+    if (openCamera === "true") {
+      openScan("camera");
       clearScanParams();
       return;
     }
-    if (openGallery === 'true') {
-      openScan('gallery');
+    if (openGallery === "true") {
+      openScan("gallery");
       clearScanParams();
     }
   }, [openCamera, openGallery, openScan, clearScanParams]);
@@ -100,7 +98,7 @@ export default function HomeScreen() {
   const onGenerate = () => {
     if (ingredients.length === 0) return;
     router.push({
-      pathname: '/recipes',
+      pathname: "/recipes",
       params: {
         ingredients: JSON.stringify(ingredients),
         country,
@@ -115,25 +113,30 @@ export default function HomeScreen() {
       gradient
       header={
         <View style={styles.headerBlock}>
-          <Text
-            style={[styles.greeting, { color: theme.textSecondary }]}
-            numberOfLines={1}>
-            {greeting} 👋
-          </Text>
           <View style={styles.brandRow}>
-            <BrandMark size={40} tone={isDark ? 'dark' : 'light'} />
-            <Text
-              style={[styles.brand, { color: theme.text }]}
-              numberOfLines={1}
-              accessibilityRole="header">
-              SnapChef AI
-            </Text>
+            <BrandMark size={50} tone={isDark ? "dark" : "light"} />
+            <View>
+              <Text
+                style={[styles.greeting, { color: theme.textSecondary }]}
+                numberOfLines={1}
+              >
+                {greeting} 👋
+              </Text>
+              <Text
+                style={[styles.brand, { color: theme.text }]}
+                numberOfLines={1}
+                accessibilityRole="header"
+              >
+                SnapChef AI
+              </Text>
+            </View>
           </View>
           <Text style={[styles.greetingSub, { color: theme.textSecondary }]}>
             What would you like to cook today?
           </Text>
         </View>
-      }>
+      }
+    >
       <View style={styles.craftCardShadow}>
         <LinearGradient
           colors={craftColors}
@@ -143,14 +146,22 @@ export default function HomeScreen() {
         >
           <View style={styles.craftInner}>
             <View style={styles.craftHead}>
-              <View style={[styles.wandContainer, { backgroundColor: wandBgColor }]}>
-                <Ionicons name="sparkles" size={18} color={isDark ? '#FFF6D6' : '#0A0116'} />
+              <View
+                style={[styles.wandContainer, { backgroundColor: wandBgColor }]}
+              >
+                <Ionicons
+                  name="sparkles"
+                  size={18}
+                  color={isDark ? "#FFF6D6" : "#0A0116"}
+                />
               </View>
               <View style={styles.craftHeadCopy}>
                 <Text style={[styles.craftTitle, { color: theme.text }]}>
                   Craft a recipe from what you have
                 </Text>
-                <Text style={[styles.craftSubtitle, { color: theme.textSecondary }]}>
+                <Text
+                  style={[styles.craftSubtitle, { color: theme.textSecondary }]}
+                >
                   SnapChef AI pairs your spices & pantry instantly.
                 </Text>
               </View>
@@ -165,8 +176,12 @@ export default function HomeScreen() {
 
             <View style={styles.cuisineBlock}>
               <View style={styles.cuisineHeader}>
-                <Text style={[styles.cuisineLabel, { color: theme.text }]}>Cuisine</Text>
-                <Text style={[styles.cuisineHint, { color: theme.tint }]}>Tap to customize</Text>
+                <Text style={[styles.cuisineLabel, { color: theme.text }]}>
+                  Cuisine
+                </Text>
+                <Text style={[styles.cuisineHint, { color: theme.tint }]}>
+                  Tap to customize
+                </Text>
               </View>
               <CountryDropdown
                 value={country}
@@ -213,7 +228,7 @@ export default function HomeScreen() {
         ]}
       >
         <LinearGradient
-          colors={['#8966FA', '#603FEF']}
+          colors={["#8966FA", "#603FEF"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.promoCard}
@@ -223,7 +238,12 @@ export default function HomeScreen() {
               <Ionicons name="sparkles" size={12} color="#8966FA" />
               <Text style={styles.promoBadgeText}>AI Scan</Text>
             </View>
-            <Ionicons name="arrow-forward-circle" size={24} color="#ffffff" style={{ opacity: 0.9 }} />
+            <Ionicons
+              name="arrow-forward-circle"
+              size={24}
+              color="#ffffff"
+              style={{ opacity: 0.9 }}
+            />
           </View>
           <Text style={styles.promoTitle}>Snap ingredients. Cook smarter.</Text>
           <Text style={styles.promoBody}>
@@ -237,11 +257,15 @@ export default function HomeScreen() {
         badge={favorites.length > 0 ? `${favorites.length} Saved` : undefined}
         subtitle={
           previewFavorites.length > 0
-            ? 'Your saved recipes, ready when you are.'
+            ? "Your saved recipes, ready when you are."
             : undefined
         }
-        actionLabel={previewFavorites.length > 0 ? 'See all' : undefined}
-        onAction={previewFavorites.length > 0 ? () => router.push('/favorites') : undefined}
+        actionLabel={previewFavorites.length > 0 ? "See all" : undefined}
+        onAction={
+          previewFavorites.length > 0
+            ? () => router.push("/favorites")
+            : undefined
+        }
       />
 
       {previewFavorites.length === 0 ? (
@@ -249,14 +273,17 @@ export default function HomeScreen() {
           title="No favorites yet"
           description="Generate a recipe, then save it to see it here."
           actionLabel="Scan ingredients"
-          onAction={() => openScan('camera')}
+          onAction={() => openScan("camera")}
         />
       ) : (
         previewFavorites.map((recipe) => (
           <FavoriteRecipeCard
             key={recipe.id}
             recipe={recipe}
-            timeLabel={formatTime(recipe.prepTimeMinutes, recipe.cookTimeMinutes)}
+            timeLabel={formatTime(
+              recipe.prepTimeMinutes,
+              recipe.cookTimeMinutes
+            )}
             favorited
             onPress={() => router.push(`/recipe/${recipe.id}`)}
             onToggleFavorite={() => void removeFavorite(recipe.id)}
@@ -273,41 +300,40 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   greeting: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: "600",
     letterSpacing: -0.1,
     lineHeight: 20,
   },
   brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     minWidth: 0,
   },
   brand: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.4,
     flexShrink: 1,
   },
   greetingSub: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
     lineHeight: 21,
   },
   craftCardShadow: {
     borderRadius: 28,
-    shadowColor: '#8966FA',
+    shadowColor: "#8966FA",
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.14,
     shadowRadius: 24,
     elevation: 12,
-    marginBottom: Spacing.four,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   craftCard: {
     borderRadius: 28,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
   },
   craftInner: {
@@ -315,8 +341,8 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   craftHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 12,
     marginBottom: 2,
   },
@@ -329,9 +355,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -339,39 +365,39 @@ const styles = StyleSheet.create({
   },
   craftTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     lineHeight: 21,
   },
   craftSubtitle: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     lineHeight: 17,
   },
   cuisineBlock: {
     gap: 10,
   },
   cuisineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   cuisineLabel: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   cuisineHint: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   warning: {
-    textAlign: 'center',
+    textAlign: "center",
     color: SnapChef.muted,
     fontSize: 12,
     marginBottom: Spacing.two,
   },
   promoPressable: {
     borderRadius: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: Spacing.four,
   },
   promoPressablePressed: {
@@ -383,38 +409,38 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   promoHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   promoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
   },
   promoBadgeText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#8966FA',
-    textTransform: 'uppercase',
+    fontWeight: "800",
+    color: "#8966FA",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   promoTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#ffffff',
+    fontWeight: "800",
+    color: "#ffffff",
     lineHeight: 26,
     marginBottom: 6,
   },
   promoBody: {
     fontSize: 13,
-    color: '#E3DCFF',
+    color: "#E3DCFF",
     lineHeight: 18,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

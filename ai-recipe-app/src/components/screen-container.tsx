@@ -1,6 +1,12 @@
-import { HeaderHeightContext } from '@react-navigation/elements';
-import { LinearGradient } from 'expo-linear-gradient';
-import { type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { HeaderHeightContext } from "@react-navigation/elements";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Keyboard,
   Platform,
@@ -10,22 +16,26 @@ import {
   View,
   type LayoutChangeEvent,
   type ViewProps,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
-import * as SystemUI from 'expo-system-ui';
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+  type Edge,
+} from "react-native-safe-area-context";
+import * as SystemUI from "expo-system-ui";
 
-import { ThemedView } from '@/components/themed-view';
+import { ThemedView } from "@/components/themed-view";
 import {
   FrostedHeaderBackground,
   HEADER_BOTTOM_RADIUS,
-} from '@/components/ui/frosted-header-background';
+} from "@/components/ui/frosted-header-background";
 import {
   BottomTabInset,
   getFloatingTabContentInset,
   MaxContentWidth,
   Spacing,
-} from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+} from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
 
 type ScreenContainerProps = ViewProps & {
   children: ReactNode;
@@ -54,7 +64,9 @@ export function ScreenContainer({
   const horizontalPad = width >= 768 ? Spacing.five : Spacing.four;
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   /** Seed so first paint clears the bar; onLayout refines to the real height. */
-  const [headerHeight, setHeaderHeight] = useState(() => (header ? insets.top + 108 : 0));
+  const [headerHeight, setHeaderHeight] = useState(() =>
+    header ? insets.top + 108 : 0
+  );
   const navHeaderHeight = useContext(HeaderHeightContext) ?? 0;
 
   /**
@@ -63,21 +75,27 @@ export function ScreenContainer({
    */
   const resolvedEdges: Edge[] = useMemo(() => {
     if (edges) return edges;
-    if (withTabInset) return ['top', 'left', 'right'];
-    return ['top', 'right', 'bottom', 'left'];
+    if (withTabInset) return ["top", "left", "right"];
+    return ["top", "right", "bottom", "left"];
   }, [edges, withTabInset]);
 
   /** Frosted header draws into the status-bar area; exclude top safe-area from the shell. */
   const safeEdges: Edge[] = useMemo(() => {
     if (!header) return resolvedEdges;
-    return resolvedEdges.filter((edge) => edge !== 'top') as Edge[];
+    return resolvedEdges.filter((edge) => edge !== "top") as Edge[];
   }, [header, resolvedEdges]);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () =>
+      setKeyboardOpen(true)
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () =>
+      setKeyboardOpen(false)
+    );
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -94,8 +112,8 @@ export function ScreenContainer({
   const bottomPad = keyboardOpen
     ? Spacing.three
     : withTabInset
-      ? tabInset
-      : Spacing.five;
+    ? tabInset
+    : Spacing.five;
 
   const onHeaderLayout = (event: LayoutChangeEvent) => {
     const next = Math.ceil(event.nativeEvent.layout.height);
@@ -109,17 +127,22 @@ export function ScreenContainer({
   const stackHeaderFallback = insets.top + 56;
   const contentTopInset = header
     ? headerHeight
-    : !resolvedEdges.includes('top')
-      ? Math.max(navHeaderHeight, stackHeaderFallback)
-      : 0;
+    : !resolvedEdges.includes("top")
+    ? Math.max(navHeaderHeight, stackHeaderFallback)
+    : 0;
 
   const headerNode = header ? (
     <View
       style={[styles.headerOverlay, { paddingHorizontal: horizontalPad }]}
       onLayout={onHeaderLayout}
-      pointerEvents="box-none">
-      <FrostedHeaderBackground />
-      <View style={[styles.headerInner, { paddingTop: insets.top + Spacing.three }]}>{header}</View>
+      pointerEvents="box-none"
+    >
+      <FrostedHeaderBackground intensity={90} />
+      <View
+        style={[styles.headerInner, { paddingTop: insets.top + Spacing.three }]}
+      >
+        {header}
+      </View>
     </View>
   ) : null;
 
@@ -127,13 +150,17 @@ export function ScreenContainer({
     <ThemedView
       style={[
         scroll ? styles.contentScroll : styles.contentFill,
-        { paddingHorizontal: horizontalPad, maxWidth: width >= 1100 ? 920 : MaxContentWidth },
+        {
+          paddingHorizontal: horizontalPad,
+          maxWidth: width >= 1100 ? 920 : MaxContentWidth,
+        },
         gradient && styles.transparent,
         header ? styles.contentWithHeader : null,
         style,
       ]}
-      type={gradient ? undefined : 'background'}
-      {...rest}>
+      type={gradient ? undefined : "background"}
+      {...rest}
+    >
       {children}
     </ThemedView>
   );
@@ -150,7 +177,8 @@ export function ScreenContainer({
       keyboardDismissMode="interactive"
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
-      nestedScrollEnabled>
+      nestedScrollEnabled
+    >
       {content}
     </ScrollView>
   ) : (
@@ -161,7 +189,8 @@ export function ScreenContainer({
         contentTopInset > 0 && { paddingTop: contentTopInset },
         bottomPad != null && { paddingBottom: bottomPad },
       ]}
-      type={gradient ? undefined : 'background'}>
+      type={gradient ? undefined : "background"}
+    >
       {content}
     </ThemedView>
   );
@@ -175,7 +204,10 @@ export function ScreenContainer({
 
   if (gradient) {
     return (
-      <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.safeArea}>
+      <LinearGradient
+        colors={[theme.gradientStart, theme.gradientEnd]}
+        style={styles.safeArea}
+      >
         <SafeAreaView style={styles.flex} edges={safeEdges}>
           {shell}
         </SafeAreaView>
@@ -184,7 +216,10 @@ export function ScreenContainer({
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={safeEdges}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+      edges={safeEdges}
+    >
       {shell}
     </SafeAreaView>
   );
@@ -198,15 +233,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transparent: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   headerOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderBottomLeftRadius: HEADER_BOTTOM_RADIUS,
     borderBottomRightRadius: HEADER_BOTTOM_RADIUS,
   },
@@ -224,15 +259,15 @@ const styles = StyleSheet.create({
   },
   /** Do NOT use flex:1 inside ScrollView — it breaks natural height / clips. */
   contentScroll: {
-    width: '100%',
-    alignSelf: 'center',
+    width: "100%",
+    alignSelf: "center",
     paddingTop: Spacing.three,
     gap: Spacing.three,
   },
   contentFill: {
     flex: 1,
-    width: '100%',
-    alignSelf: 'center',
+    width: "100%",
+    alignSelf: "center",
     paddingTop: Spacing.three,
     gap: Spacing.three,
   },

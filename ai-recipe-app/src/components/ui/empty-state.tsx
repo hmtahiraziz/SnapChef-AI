@@ -46,7 +46,8 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.three,
     borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   action: {
     marginTop: Spacing.one,

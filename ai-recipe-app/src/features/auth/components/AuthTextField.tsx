@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View, StyleSheet, type TextInputProps } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+
+import { useAuthKeyboardScroll } from './AuthScreenShell';
 
 type AuthTextFieldProps = TextInputProps & {
   label: string;
@@ -29,9 +31,11 @@ export function AuthTextField({
 }: AuthTextFieldProps) {
   const [isFocused, setIsFocused] = useState(false);
   const useFlex = flex || Boolean(containerClassName);
+  const fieldRef = useRef<View>(null);
+  const authScroll = useAuthKeyboardScroll();
 
   return (
-    <View style={[styles.container, useFlex ? styles.flexItem : null]}>
+    <View ref={fieldRef} style={[styles.container, useFlex ? styles.flexItem : null]} collapsable={false}>
       <View style={styles.labelRow}>
         <Text style={styles.label}>{label}</Text>
         {rightLabel && onRightLabelPress ? (
@@ -54,6 +58,7 @@ export function AuthTextField({
           secureTextEntry={secureTextEntry}
           onFocus={(e) => {
             setIsFocused(true);
+            authScroll?.ensureVisible(fieldRef);
             rest.onFocus?.(e);
           }}
           onBlur={(e) => {
