@@ -179,10 +179,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   glassBorder: {
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   outline: {
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   glow: {
     shadowColor: SnapChef.primary,

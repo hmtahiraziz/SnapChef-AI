@@ -1,7 +1,6 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { SnapChef } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type ServingsAdjusterProps = {
@@ -32,24 +31,35 @@ export function ServingsAdjuster({
   };
 
   return (
-    <View style={styles.row}>
+    <View
+      style={[
+        styles.stepper,
+        {
+          backgroundColor: theme.isDark ? theme.field : '#F5F3F8',
+          borderColor: theme.isDark ? theme.border : '#E6E1EC',
+        },
+      ]}>
       <Pressable
         onPress={decrease}
         disabled={servings <= min}
         accessibilityLabel="Decrease servings"
         accessibilityRole="button"
         accessibilityState={{ disabled: servings <= min }}
-        style={[
+        style={({ pressed }) => [
           styles.button,
           {
-            borderColor: theme.backgroundSelected,
+            backgroundColor: theme.isDark ? theme.backgroundElement : '#FFFFFF',
+            borderColor: theme.isDark ? theme.border : '#E8E4EF',
             opacity: servings <= min ? 0.4 : 1,
           },
+          pressed && servings > min && styles.buttonPressed,
         ]}>
-        <ThemedText type="smallBold">−</ThemedText>
+        <Text style={[styles.buttonText, { color: theme.text }]}>−</Text>
       </Pressable>
 
-      <ThemedText type="smallBold">{servings} servings</ThemedText>
+      <Text style={[styles.value, { color: theme.text }]}>
+        {servings} serving{servings === 1 ? '' : 's'}
+      </Text>
 
       <Pressable
         onPress={increase}
@@ -57,31 +67,53 @@ export function ServingsAdjuster({
         accessibilityLabel="Increase servings"
         accessibilityRole="button"
         accessibilityState={{ disabled: servings >= max }}
-        style={[
+        style={({ pressed }) => [
           styles.button,
           {
-            borderColor: theme.backgroundSelected,
+            backgroundColor: theme.isDark ? theme.backgroundElement : '#FFFFFF',
+            borderColor: theme.isDark ? theme.border : '#E8E4EF',
             opacity: servings >= max ? 0.4 : 1,
           },
+          pressed && servings < max && styles.buttonPressed,
         ]}>
-        <ThemedText type="smallBold">+</ThemedText>
+        <Text style={[styles.buttonText, { color: theme.text }]}>+</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   button: {
-    width: 44,
-    height: 44,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 20,
+    color: SnapChef.ink,
+  },
+  value: {
+    fontSize: 13,
+    fontWeight: '700',
+    minWidth: 72,
+    textAlign: 'center',
   },
 });

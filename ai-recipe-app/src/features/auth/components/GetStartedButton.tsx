@@ -1,15 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  PanResponder,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import AnimatedReanimated, { FadeInUp } from 'react-native-reanimated';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  cancelAnimation,
+  Extrapolation,
+  FadeInUp,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 type GetStartedButtonProps = {
   onPress: () => void;
@@ -17,184 +23,193 @@ type GetStartedButtonProps = {
   accessibilityLabel?: string;
 };
 
+const HANDLE = 56;
+const PAD = 6;
+const COMPLETE_RATIO = 0.85;
+
+const SPRING_BACK = { damping: 18, stiffness: 220, mass: 0.8, overshootClamping: true };
+const SPRING_END = { damping: 20, stiffness: 180, mass: 0.9, overshootClamping: true };
+
 export function GetStartedButton({
   onPress,
   label = 'Swipe to Get Started',
   accessibilityLabel,
 }: GetStartedButtonProps) {
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
-
-  // Track layout width dynamically
   const [trackWidth, setTrackWidth] = useState(0);
-  const handleWidth = 56;
-  const padding = 6;
-  const maxSwipeDistance = Math.max(0, trackWidth - handleWidth - padding * 2);
+  const maxX = Math.max(0, trackWidth - HANDLE - PAD * 2);
 
-  // Swipe animation values
-  const pan = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(0.35)).current;
-  const isTriggered = useRef(false);
+  const translateX = useSharedValue(0);
+  const startX = useSharedValue(0);
+  const maxXSV = useSharedValue(0);
+  const completed = useSharedValue(false);
+  const shimmer = useSharedValue(0.45);
 
-  // Shimmer animation for background text
   useEffect(() => {
-    const shimmer = Animated.loop(
-      Animated.sequence([
-        Animated.timing(textOpacity, {
-          toValue: 0.8,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(textOpacity, {
-          toValue: 0.35,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
+    maxXSV.value = maxX;
+  }, [maxX, maxXSV]);
+
+  useEffect(() => {
+    shimmer.value = withRepeat(
+      withSequence(
+        withTiming(0.9, { duration: 1100 }),
+        withTiming(0.45, { duration: 1100 })
+      ),
+      -1,
+      false
     );
-    shimmer.start();
-    return () => shimmer.stop();
-  }, [textOpacity]);
+    return () => cancelAnimation(shimmer);
+  }, [shimmer]);
 
-  // PanResponder to handle the drag gesture
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        // Subtle press response if needed
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (isTriggered.current) return;
-        // Clamp swipe distance between 0 and maxSwipeDistance
-        const nextX = Math.max(0, Math.min(maxSwipeDistance, gestureState.dx));
-        pan.setValue(nextX);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (isTriggered.current) return;
-        
-        const threshold = maxSwipeDistance * 0.82;
-        if (gestureState.dx >= threshold) {
-          isTriggered.current = true;
-          // Animate handle to the end
-          Animated.spring(pan, {
-            toValue: maxSwipeDistance,
-            tension: 40,
-            friction: 7,
-            useNativeDriver: true,
-          }).start(() => {
-            onPress();
-            // Reset state in case user navigates back later
-            setTimeout(() => {
-              isTriggered.current = false;
-              pan.setValue(0);
-            }, 800);
-          });
-        } else {
-          // Bounce back to start
-          Animated.spring(pan, {
-            toValue: 0,
-            tension: 50,
-            friction: 8,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  }, []);
+
+  const triggerComplete = useCallback(() => {
+    onPress();
+    setTimeout(() => {
+      completed.value = false;
+      translateX.value = 0;
+    }, 600);
+  }, [onPress, completed, translateX]);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX(8)
+    .failOffsetY([-12, 12])
+    .onBegin(() => {
+      startX.value = translateX.value;
     })
-  ).current;
+    .onUpdate((e) => {
+      if (completed.value) return;
+      const max = maxXSV.value;
+      if (max <= 0) return;
+      translateX.value = Math.max(0, Math.min(max, startX.value + e.translationX));
+    })
+    .onEnd((e) => {
+      if (completed.value) return;
+      const max = maxXSV.value;
+      if (max <= 0) {
+        translateX.value = 0;
+        return;
+      }
 
-  // Fade out text as the user swipes
-  const interpolatedTextOpacity = pan.interpolate({
-    inputRange: [0, maxSwipeDistance * 0.5],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
+      const projected = translateX.value + e.velocityX * 0.12;
+      const shouldComplete =
+        projected >= max * COMPLETE_RATIO || translateX.value >= max * COMPLETE_RATIO;
+
+      if (shouldComplete) {
+        completed.value = true;
+        translateX.value = withSpring(max, SPRING_END, (finished) => {
+          if (finished) runOnJS(triggerComplete)();
+        });
+      } else {
+        translateX.value = withSpring(0, SPRING_BACK);
+      }
+    });
+
+  const handleStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const fillStyle = useAnimatedStyle(() => {
+    const max = Math.max(1, maxXSV.value);
+    return {
+      width: HANDLE + PAD * 2 + translateX.value,
+      opacity: interpolate(translateX.value, [0, max * 0.2, max], [0, 0.35, 0.55], Extrapolation.CLAMP),
+    };
+  });
+
+  const labelStyle = useAnimatedStyle(() => {
+    const max = Math.max(1, maxXSV.value);
+    return {
+      opacity: interpolate(
+        translateX.value,
+        [0, max * 0.55],
+        [shimmer.value, 0],
+        Extrapolation.CLAMP
+      ),
+    };
   });
 
   return (
-    <AnimatedReanimated.View
-      entering={FadeInUp.duration(500).delay(150)}
-      className="w-full max-w-auth self-center">
-      <View
-        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-        style={styles.track}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? label}>
-        
-        {/* Shimmering background hint text */}
-        <Animated.View
-          style={[
-            styles.textContainer,
-            { opacity: Animated.multiply(textOpacity, interpolatedTextOpacity) },
-          ]}>
-          <Text style={styles.swipeText}>{label}</Text>
-        </Animated.View>
+    <Animated.View entering={FadeInUp.duration(420).delay(80)} style={styles.root}>
+      <GestureDetector gesture={pan}>
+        <View
+          onLayout={onLayout}
+          style={styles.track}
+          accessibilityRole="adjustable"
+          accessibilityLabel={accessibilityLabel ?? label}
+          accessibilityHint="Swipe right to continue">
+          <Animated.View style={[styles.fill, fillStyle]} pointerEvents="none" />
 
-        {/* Swipe Handle */}
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={[
-            styles.handle,
-            {
-              transform: [{ translateX: pan }],
-            },
-          ]}>
-          <LinearGradient
-            colors={['#A78BFA', '#8966FA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.handleGradient}>
-            <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-          </LinearGradient>
-        </Animated.View>
-      </View>
-    </AnimatedReanimated.View>
+          <Animated.View style={[styles.labelWrap, labelStyle]} pointerEvents="none">
+            <Text style={styles.label}>{label}</Text>
+          </Animated.View>
+
+          <Animated.View style={[styles.handle, handleStyle]}>
+            <LinearGradient
+              colors={['#A78BFA', '#8966FA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.handleGradient}>
+              <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </GestureDetector>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  track: {
-    height: 68,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
-    justifyContent: 'center',
-    padding: 6,
-    shadowColor: '#8966FA',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 4,
-    position: 'relative',
-    overflow: 'hidden',
+  root: {
+    width: '100%',
+    alignSelf: 'center',
   },
-  textContainer: {
+  track: {
+    height: 64,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    paddingHorizontal: PAD,
+    overflow: 'hidden',
+    shadowColor: '#8966FA',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  fill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 999,
+    backgroundColor: 'rgba(137, 102, 250, 0.22)',
+  },
+  labelWrap: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingLeft: 30, // Offset text to account for starting handle position
+    paddingLeft: HANDLE * 0.35,
   },
-  swipeText: {
+  label: {
     fontSize: 15,
     fontWeight: '700',
     color: '#3C2D54',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   handle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    shadowColor: '#8966FA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
-    zIndex: 10,
+    width: HANDLE,
+    height: HANDLE,
+    borderRadius: HANDLE / 2,
+    zIndex: 2,
   },
   handleGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: HANDLE / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },

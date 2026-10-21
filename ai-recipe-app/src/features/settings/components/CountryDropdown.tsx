@@ -1,9 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Easing,
   FlatList,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -19,7 +21,10 @@ import { COUNTRIES, getCountryFlag } from '@/constants/countries';
 import { SnapChef } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SHEET_SLIDE_DISTANCE = Math.min(SCREEN_HEIGHT * 0.78, 640);
+const OPEN_MS = 280;
+const CLOSE_MS = 220;
 
 /** Cuisine sub-labels for richer presentation */
 const CUISINE_TAGLINES: Record<string, string> = {
@@ -52,7 +57,7 @@ type CountryDropdownProps = {
 
 /**
  * Premium country dropdown.
- * Trigger inline — opens a full-screen bottom-sheet modal with search & grid.
+ * Trigger inline — opens a full-screen bottom-sheet modal with search & list.
  */
 export function CountryDropdown({
   value,
@@ -65,6 +70,9 @@ export function CountryDropdown({
   const insets = useSafeAreaInsets();
   const flag = getCountryFlag(value);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(SHEET_SLIDE_DISTANCE)).current;
+  const closingRef = useRef(false);
 
   const theme = useTheme();
   const { isDark } = theme;
@@ -97,25 +105,83 @@ export function CountryDropdown({
     }).start();
   }, [scaleAnim]);
 
+  const animateOpen = useCallback(() => {
+    backdropOpacity.setValue(0);
+    sheetTranslateY.setValue(SHEET_SLIDE_DISTANCE);
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: OPEN_MS,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 0,
+        duration: OPEN_MS,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [backdropOpacity, sheetTranslateY]);
+
+  const closeSheet = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: SHEET_SLIDE_DISTANCE,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      closingRef.current = false;
+      if (finished) {
+        setOpen(false);
+        setSearch('');
+      }
+    });
+  }, [backdropOpacity, sheetTranslateY]);
+
+  useEffect(() => {
+    if (open) {
+      closingRef.current = false;
+      animateOpen();
+    }
+  }, [open, animateOpen]);
+
   const select = useCallback(
     (country: string) => {
+      Keyboard.dismiss();
       onChange(country);
-      setOpen(false);
-      setSearch('');
+      closeSheet();
     },
-    [onChange],
+    [onChange, closeSheet],
   );
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
 
   const renderItem = useCallback(
     ({ item: country }: { item: string }) => {
       const selected = country === value;
       const tagline = CUISINE_TAGLINES[country] ?? '';
+      const label = country === 'Others' ? 'Others' : country;
 
       return (
         <Pressable
+          onPressIn={dismissKeyboard}
           onPress={() => select(country)}
           accessibilityRole="button"
           accessibilityState={{ selected }}
+          accessibilityLabel={tagline ? `${label}, ${tagline}` : label}
           style={({ pressed }) => [
             styles.option,
             {
@@ -128,56 +194,63 @@ export function CountryDropdown({
                   : '#FFFFFF',
               borderColor: selected
                 ? isDark
-                  ? 'rgba(137, 102, 250, 0.4)'
-                  : 'rgba(137, 102, 250, 0.22)'
+                  ? 'rgba(137, 102, 250, 0.35)'
+                  : 'rgba(137, 102, 250, 0.2)'
                 : isDark
                   ? theme.cardBorder
-                  : 'transparent',
+                  : 'rgba(232, 228, 239, 0.9)',
             },
-            pressed && styles.optionPressed,
+            pressed && !selected && styles.optionPressed,
           ]}>
-          {/* Flag circle */}
-          <View
-            style={[
-              styles.optionFlag,
-              { backgroundColor: isDark ? theme.background : '#F3F1F6' },
-              selected && { backgroundColor: isDark ? 'rgba(137, 102, 250, 0.25)' : '#EDE7FF' },
-            ]}>
-            <Text style={styles.optionFlagEmoji}>{getCountryFlag(country)}</Text>
-          </View>
-
-          {/* Label + tagline */}
-          <View style={styles.optionTextWrap}>
-            <Text
+          {/* Row layout on View — Pressable flexDirection is unreliable with NativeWind/web */}
+          <View style={styles.optionRow}>
+            {/* 1 — Flag */}
+            <View
               style={[
-                styles.optionLabel,
-                { color: theme.text },
-                selected && { color: theme.tint },
-              ]}
-              numberOfLines={1}>
-              {country === 'Others' ? 'Others' : country}
-            </Text>
-            {tagline ? (
-              <Text style={[styles.optionTagline, { color: theme.textSecondary }]} numberOfLines={1}>
-                {tagline}
-              </Text>
-            ) : null}
-          </View>
+                styles.optionFlag,
+                { backgroundColor: isDark ? theme.background : '#F3F1F6' },
+                selected && {
+                  backgroundColor: isDark ? 'rgba(137, 102, 250, 0.25)' : '#EDE7FF',
+                },
+              ]}>
+              <Text style={styles.optionFlagEmoji}>{getCountryFlag(country)}</Text>
+            </View>
 
-          {/* Check indicator */}
-          {selected ? (
-            <View style={styles.checkBadge}>
-              <Ionicons name="checkmark" size={14} color="#fff" />
+            {/* 2 — Name + description (column) */}
+            <View style={styles.optionTextColumn}>
+              <Text
+                style={[
+                  styles.optionLabel,
+                  { color: theme.text },
+                  selected && { color: theme.tint },
+                ]}
+                numberOfLines={1}>
+                {label}
+              </Text>
+              {tagline ? (
+                <Text
+                  style={[styles.optionTagline, { color: theme.textSecondary }]}
+                  numberOfLines={1}>
+                  {tagline}
+                </Text>
+              ) : null}
             </View>
-          ) : (
-            <View style={[styles.radioOuter, { borderColor: isDark ? theme.border : '#DCD7E4' }]}>
-              <View style={styles.radioInner} />
-            </View>
-          )}
+
+            {/* 3 — Check / radio */}
+            {selected ? (
+              <View style={styles.checkBadge}>
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              </View>
+            ) : (
+              <View
+                style={[styles.radioOuter, { borderColor: isDark ? theme.border : '#D5D0DC' }]}
+              />
+            )}
+          </View>
         </Pressable>
       );
     },
-    [value, select, isDark, theme],
+    [value, select, dismissKeyboard, isDark, theme],
   );
 
   const keyExtractor = useCallback((item: string) => item, []);
@@ -203,21 +276,16 @@ export function CountryDropdown({
             style={StyleSheet.absoluteFill}
           />
 
-          {/* Flag badge */}
           <View
             style={[
               styles.triggerFlagBadge,
-              {
-                backgroundColor: isDark ? theme.field : '#EDE7FF',
-                borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.12)',
-              },
+              { backgroundColor: isDark ? theme.field : '#EDE7FF' },
             ]}>
             <Text style={styles.triggerFlagEmoji}>{value ? flag : '🌍'}</Text>
           </View>
 
-          {/* Label */}
           <View style={styles.triggerTextWrap}>
-            <Text style={[styles.triggerEyebrow, { color: theme.textSecondary }]}>Cuisine</Text>
+            <Text style={[styles.triggerEyebrow, { color: theme.tint }]}>CUISINE</Text>
             <Text
               style={[
                 styles.triggerLabel,
@@ -227,18 +295,21 @@ export function CountryDropdown({
               numberOfLines={1}>
               {value || placeholder}
             </Text>
+            {value && CUISINE_TAGLINES[value] ? (
+              <Text
+                style={[styles.triggerTagline, { color: theme.textSecondary }]}
+                numberOfLines={1}>
+                {CUISINE_TAGLINES[value]}
+              </Text>
+            ) : null}
           </View>
 
-          {/* Chevron pill */}
           <View
             style={[
               styles.triggerChevron,
-              {
-                backgroundColor: isDark ? theme.field : '#F3F0FF',
-                borderColor: isDark ? theme.border : 'rgba(137, 102, 250, 0.1)',
-              },
+              { backgroundColor: isDark ? theme.field : '#F3F0FF' },
             ]}>
-            <Ionicons name="chevron-expand-outline" size={16} color={theme.tint} />
+            <Ionicons name="swap-vertical" size={16} color={theme.tint} />
           </View>
         </Pressable>
       </Animated.View>
@@ -246,104 +317,98 @@ export function CountryDropdown({
       {/* ────────── Full-screen Picker Modal ────────── */}
       <Modal
         visible={open}
-        animationType="slide"
+        animationType="none"
         transparent
         statusBarTranslucent
-        onRequestClose={() => {
-          setOpen(false);
-          setSearch('');
-        }}>
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => {
-            setOpen(false);
-            setSearch('');
-          }}
-        />
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: isDark ? theme.backgroundElement : '#FAFAFD',
-              borderTopColor: isDark ? theme.cardBorder : 'transparent',
-              borderTopWidth: isDark ? 1 : 0,
-              paddingBottom: Math.max(insets.bottom, 16) + 8,
-            },
-          ]}>
-          {/* Handle */}
-          <View style={[styles.sheetHandle, { backgroundColor: isDark ? theme.border : '#DCD7E4' }]} />
+        onRequestClose={closeSheet}>
+        <View style={styles.modalRoot} pointerEvents="box-none">
+          <Animated.View
+            style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
+            pointerEvents="auto">
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+          </Animated.View>
 
-          {/* Sheet header */}
-          <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: theme.text }]}>Choose Cuisine</Text>
-            <Pressable
-              onPress={() => {
-                setOpen(false);
-                setSearch('');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={({ pressed }) => [
-                styles.closeBtn,
-                { backgroundColor: isDark ? theme.backgroundSelected : '#F3F1F6' },
-                pressed && styles.closeBtnPressed,
-              ]}>
-              <Ionicons name="close" size={20} color={theme.textSecondary} />
-            </Pressable>
-          </View>
-
-          {/* Search */}
-          <View
+          <Animated.View
             style={[
-              styles.searchWrap,
+              styles.sheet,
               {
-                backgroundColor: isDark ? theme.background : '#FFFFFF',
-                borderColor: isDark ? theme.border : '#E8E4EF',
+                backgroundColor: isDark ? theme.backgroundElement : '#FAFAFD',
+                borderTopColor: isDark ? theme.cardBorder : 'transparent',
+                borderTopWidth: isDark ? 1 : 0,
+                paddingBottom: Math.max(insets.bottom, 16) + 8,
+                transform: [{ translateY: sheetTranslateY }],
               },
             ]}>
-            <Ionicons
-              name="search"
-              size={18}
-              color={theme.textSecondary}
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search country or dish..."
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#B0AAB8'}
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-              returnKeyType="search"
-            />
-            {search.length > 0 && Platform.OS !== 'ios' ? (
-              <Pressable
-                onPress={() => setSearch('')}
-                hitSlop={8}
-                style={styles.clearBtn}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-              </Pressable>
-            ) : null}
-          </View>
+            <View style={[styles.sheetHandle, { backgroundColor: isDark ? theme.border : '#DCD7E4' }]} />
 
-          {/* Country list */}
-          <FlatList
-            data={filtered}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <View style={styles.emptyWrap}>
-                <Text style={styles.emptyEmoji}>🔍</Text>
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No matching cuisines found</Text>
-              </View>
-            }
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-          />
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: theme.text }]}>Choose Cuisine</Text>
+              <Pressable
+                onPress={closeSheet}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  { backgroundColor: isDark ? theme.backgroundSelected : '#F3F1F6' },
+                  pressed && styles.closeBtnPressed,
+                ]}>
+                <Ionicons name="close" size={20} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
+            <View
+              style={[
+                styles.searchWrap,
+                {
+                  backgroundColor: isDark ? theme.background : '#FFFFFF',
+                  borderColor: isDark ? theme.border : '#E8E4EF',
+                },
+              ]}>
+              <Ionicons
+                name="search"
+                size={18}
+                color={theme.textSecondary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder="Search country or dish..."
+                placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#B0AAB8'}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+                returnKeyType="search"
+              />
+              {search.length > 0 && Platform.OS !== 'ios' ? (
+                <Pressable onPress={() => setSearch('')} hitSlop={8} style={styles.clearBtn}>
+                  <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+
+            <FlatList
+              data={filtered}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              onScrollBeginDrag={dismissKeyboard}
+              onTouchStart={dismissKeyboard}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContent}
+              ListEmptyComponent={
+                <View style={styles.emptyWrap}>
+                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    No matching cuisines found
+                  </Text>
+                </View>
+              }
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+            />
+          </Animated.View>
         </View>
       </Modal>
     </View>
@@ -359,12 +424,12 @@ const styles = StyleSheet.create({
   /* ── Trigger ── */
   trigger: {
     width: '100%',
-    minHeight: 64,
+    minHeight: 72,
     borderRadius: 20,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(137, 102, 250, 0.18)',
     overflow: 'hidden',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingLeft: 14,
     paddingRight: 14,
     flexDirection: 'row',
@@ -374,20 +439,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
+    ...Platform.select({
+      web: { display: 'flex' as const },
+      default: {},
+    }),
   },
   triggerFlagBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: '#EDE7FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(137, 102, 250, 0.12)',
+    marginRight: 14,
   },
   triggerFlagEmoji: {
-    fontSize: 22,
+    fontSize: 26,
     textAlign: 'center',
     ...Platform.select({
       android: { includeFontPadding: false },
@@ -397,47 +464,50 @@ const styles = StyleSheet.create({
   triggerTextWrap: {
     flex: 1,
     justifyContent: 'center',
+    minWidth: 0,
+    paddingRight: 8,
   },
   triggerEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
-    color: SnapChef.muted,
+    fontWeight: '800',
+    color: SnapChef.primary,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.9,
     marginBottom: 2,
   },
   triggerLabel: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: SnapChef.ink,
     letterSpacing: 0.1,
   },
-  triggerPlaceholder: {
-    color: SnapChef.muted,
+  triggerTagline: {
+    fontSize: 12,
     fontWeight: '500',
+    marginTop: 2,
+    lineHeight: 16,
   },
   triggerChevron: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     backgroundColor: '#F3F0FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(137, 102, 250, 0.1)',
+    marginLeft: 4,
+    flexShrink: 0,
   },
 
   /* ── Modal ── */
-  modalBackdrop: {
+  modalRoot: {
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(10, 1, 22, 0.45)',
   },
   sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     maxHeight: '78%',
     backgroundColor: '#FAFAFD',
     borderTopLeftRadius: 28,
@@ -487,10 +557,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
-    marginBottom: 8,
+    marginBottom: 4,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E8E4EF',
     paddingHorizontal: 12,
     height: 46,
@@ -516,64 +586,63 @@ const styles = StyleSheet.create({
   /* ── List ── */
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   separator: {
-    height: 4,
+    height: 16,
   },
 
-  /* ── Option Row ── */
+  /* ── Option: [flag] | name+desc column | check ── */
   option: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  optionSelected: {
-    backgroundColor: '#F3EFFF',
-    borderColor: 'rgba(137, 102, 250, 0.22)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   optionPressed: {
-    backgroundColor: '#F8F6FF',
+    opacity: 0.92,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    ...Platform.select({
+      web: { display: 'flex' as const },
+      default: {},
+    }),
   },
   optionFlag: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#F3F1F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
-  },
-  optionFlagSelected: {
-    backgroundColor: '#EDE7FF',
+    marginRight: 12,
+    flexShrink: 0,
   },
   optionFlagEmoji: {
-    fontSize: 22,
+    fontSize: 20,
     textAlign: 'center',
     ...Platform.select({
       android: { includeFontPadding: false },
       default: {},
     }),
   },
-  optionTextWrap: {
+  optionTextColumn: {
     flex: 1,
+    flexDirection: 'column',
     justifyContent: 'center',
-    paddingRight: 8,
+    minWidth: 0,
+    marginRight: 12,
   },
   optionLabel: {
     fontSize: 15,
     fontWeight: '700',
     color: SnapChef.ink,
     marginBottom: 2,
-  },
-  optionLabelSelected: {
-    color: SnapChef.primary,
   },
   optionTagline: {
     fontSize: 12,
@@ -590,24 +659,15 @@ const styles = StyleSheet.create({
     backgroundColor: SnapChef.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: SnapChef.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 2,
+    flexShrink: 0,
   },
   radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: '#DCD7E4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioInner: {
-    width: 0,
-    height: 0,
+    borderColor: '#D5D0DC',
+    flexShrink: 0,
   },
 
   /* ── Empty State ── */

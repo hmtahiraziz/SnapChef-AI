@@ -8,6 +8,11 @@ interface GenerateRecipesResponse {
   recipes: Recipe[];
 }
 
+export type GenerateRecipesOptions = {
+  maxRecipes?: number;
+  excludeTitles?: string[];
+};
+
 function withRecipeImages(recipes: Recipe[]): Recipe[] {
   return recipes.map((recipe) => ({
     ...recipe,
@@ -21,6 +26,7 @@ function withRecipeImages(recipes: Recipe[]): Recipe[] {
 export async function generateRecipesFromIngredients(
   ingredients: string[],
   country: string,
+  options: GenerateRecipesOptions = {},
 ): Promise<Recipe[]> {
   if (!hasApiBaseUrl()) {
     throw new ApiKeyMissingError();
@@ -34,13 +40,17 @@ export async function generateRecipesFromIngredients(
     throw new RecipeGenerationError('Select a country to generate regional recipes.');
   }
 
+  const maxRecipes = options.maxRecipes ?? 1;
+  const excludeTitles = options.excludeTitles ?? [];
+
   try {
     const response = await backendFetch<GenerateRecipesResponse>('/api/v1/recipes/generate', {
       method: 'POST',
       body: JSON.stringify({
         ingredients,
-        max_recipes: 2,
+        max_recipes: maxRecipes,
         country: country.trim(),
+        exclude_titles: excludeTitles,
       }),
     });
 

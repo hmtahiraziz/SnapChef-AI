@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 52,
     borderRadius: 26,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
