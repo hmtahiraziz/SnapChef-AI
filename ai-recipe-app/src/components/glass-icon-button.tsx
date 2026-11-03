@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   webFallback: { backgroundColor: 'rgba(255,255,255,0.9)' },
   border: {
     ...StyleSheet.absoluteFillObject,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.9)',
   },
 });

@@ -2,7 +2,6 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { GlassBackButton } from '@/components/glass-back-button';
@@ -14,7 +13,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { EmptyState } from '@/components/ui/empty-state';
 import { GlassPill } from '@/components/ui/glass-pill';
 import { RecipeGeneratingLoader } from '@/components/ui/recipe-generating-loader';
-import { SnapChef, Spacing } from '@/constants/theme';
+import { Radii, SnapChef, Spacing } from '@/constants/theme';
 import {
   parseCountryParam,
   parseIngredientParam,
@@ -34,6 +33,12 @@ function formatRecipeTime(recipe: Recipe): string {
   return `${total} min`;
 }
 
+function formatIngredientChip(list: string[]): string {
+  if (list.length === 0) return 'Add ingredients';
+  const preview = list.slice(0, 3).join(', ');
+  return list.length > 3 ? `${preview}…` : preview;
+}
+
 export default function RecipesScreen() {
   const { isTablet } = useResponsiveLayout();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -45,11 +50,14 @@ export default function RecipesScreen() {
   }>();
   const ingredientList = parseIngredientParam(ingredients);
   const selectedCountry = parseCountryParam(country);
-  const { recipes, isLoading, error, retry } = useRecipeGeneration(
+  const { recipes, isLoading, isLoadingMore, error, retry } = useRecipeGeneration(
     ingredientList,
     selectedCountry,
-    scanImage
+    scanImage,
   );
+
+  const chipBg = theme.isDark ? theme.backgroundSelected : 'rgba(237, 231, 255, 0.95)';
+  const chipBorder = theme.isDark ? theme.border : 'rgba(137, 102, 250, 0.18)';
 
   return (
     <View style={styles.root}>
@@ -57,50 +65,49 @@ export default function RecipesScreen() {
         <View style={styles.topPad} />
 
         <View style={styles.headerBlock}>
-          <Text style={[styles.kicker, { color: theme.tint }]}>AI RESULTS</Text>
+          <View style={styles.kickerRow}>
+            <Ionicons name="sparkles" size={12} color={SnapChef.primary} />
+            <Text style={[styles.kicker, { color: theme.tint }]}>AI RESULTS</Text>
+          </View>
           <Text style={[styles.title, { color: theme.text }]}>Your recipes</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={2}>
-            {ingredientList.length > 0
-              ? `${selectedCountry} · ${ingredientList.slice(0, 4).join(', ')}${
-                  ingredientList.length > 4 ? '…' : ''
-                }`
-              : 'Go back home and add ingredients to generate recipes.'}
-          </Text>
-        </View>
 
-        {!isLoading && !error && scanImage ? (
-          <Animated.View
-            entering={FadeInDown.delay(50).springify()}
-            style={[styles.scanBannerShadow, { shadowColor: theme.tint }]}
-          >
-            <View style={[styles.scanBanner, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Image source={{ uri: scanImage }} style={styles.scanBannerImage} contentFit="cover" />
-              <LinearGradient
-                colors={['transparent', 'rgba(10,1,22,0.92)']}
-                style={styles.scanBannerGradient}
-              />
-              <View style={styles.scanBannerContent}>
-                <View style={styles.scanBadge}>
-                  <Ionicons name="sparkles" size={12} color="#FFF" />
-                  <Text style={styles.scanBadgeText}>Matched from scan</Text>
-                </View>
-                <Text style={styles.scanBannerTitle}>Your kitchen treasures</Text>
-                <View style={styles.scanIngredientsList}>
-                  {ingredientList.slice(0, 6).map((ing, idx) => (
-                    <View key={`${ing}-${idx}`} style={styles.scanIngChip}>
-                      <Text style={styles.scanIngChipText}>{ing}</Text>
-                    </View>
-                  ))}
-                  {ingredientList.length > 6 ? (
-                    <View style={[styles.scanIngChip, { backgroundColor: 'rgba(137, 102, 250, 0.35)' }]}>
-                      <Text style={styles.scanIngChipText}>+{ingredientList.length - 6} more</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
+          {ingredientList.length > 0 ? (
+            <View style={styles.chipRow}>
+              <Pressable
+                onPress={() => router.push('/preferences/cuisine')}
+                accessibilityRole="button"
+                accessibilityLabel="Change cuisine"
+                style={[styles.filterChip, { backgroundColor: chipBg, borderColor: chipBorder }]}
+              >
+                <Ionicons name="globe-outline" size={14} color={SnapChef.primary} />
+                <Text style={[styles.filterChipText, { color: theme.text }]} numberOfLines={1}>
+                  {selectedCountry}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={goHome}
+                accessibilityRole="button"
+                accessibilityLabel="Edit ingredients"
+                style={[
+                  styles.filterChip,
+                  styles.filterChipGrow,
+                  { backgroundColor: chipBg, borderColor: chipBorder },
+                ]}
+              >
+                <Ionicons name="leaf-outline" size={14} color={SnapChef.primary} />
+                <Text style={[styles.filterChipText, { color: theme.text }]} numberOfLines={1}>
+                  {formatIngredientChip(ingredientList)}
+                </Text>
+                <Ionicons name="pencil-outline" size={13} color={theme.textSecondary} />
+              </Pressable>
             </View>
-          </Animated.View>
-        ) : null}
+          ) : (
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              Go back home and add ingredients to generate recipes.
+            </Text>
+          )}
+        </View>
 
         <View style={styles.actions}>
           {!isLoading && ingredientList.length > 0 ? (
@@ -114,7 +121,7 @@ export default function RecipesScreen() {
               ]}
             >
               <LinearGradient
-                colors={['#8966FA', '#603FEF']}
+                colors={[SnapChef.primary, '#603FEF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.regenerateBtn}
@@ -124,25 +131,30 @@ export default function RecipesScreen() {
               </LinearGradient>
             </Pressable>
           ) : null}
-          <GlassPill
-            label="Cuisine"
-            variant="outline"
-            onPress={() => router.push('/preferences/cuisine')}
-            style={{ flexGrow: 1, flexShrink: 1, minWidth: 120 }}
-          />
-          <GlassPill 
-            label="New search" 
-            variant="glass" 
-            onPress={goHome} 
-            style={{ flexGrow: 1, flexShrink: 1, minWidth: 120 }}
-          />
+
+          <Pressable
+            onPress={goHome}
+            accessibilityRole="button"
+            accessibilityLabel="New search"
+            style={({ pressed }) => [
+              styles.newSearchBtn,
+              {
+                backgroundColor: theme.isDark ? theme.backgroundElement : SnapChef.white,
+                borderColor: chipBorder,
+              },
+              pressed && styles.btnPressed,
+            ]}
+          >
+            <Ionicons name="options-outline" size={16} color={theme.text} />
+            <Text style={[styles.newSearchText, { color: theme.text }]}>New search</Text>
+          </Pressable>
         </View>
 
         {isLoading ? (
           <RecipeGeneratingLoader
             country={selectedCountry}
             ingredientCount={ingredientList.length}
-            skeletonCount={2}
+            skeletonCount={1}
             wide={isTablet}
           />
         ) : null}
@@ -167,29 +179,28 @@ export default function RecipesScreen() {
           {!isLoading &&
             !error &&
             recipes.map((recipe, index) => {
+              const onHandCount = recipe.ingredients?.length ?? 0;
               const missingCount = recipe.missingIngredients?.length ?? 0;
               const saved = isFavorite(recipe.id);
               return (
                 <Animated.View
                   key={recipe.id}
                   entering={FadeInDown.delay(index * 90).springify()}
-                  style={isTablet ? styles.gridItem : undefined}>
+                  style={isTablet ? styles.gridItem : undefined}
+                >
                   <RecipeResultCard
                     title={recipe.title}
                     timeLabel={formatRecipeTime(recipe)}
                     servings={recipe.servings}
                     difficulty={recipe.difficulty}
-                    meta={[
-                      recipe.cuisine ?? recipe.country ?? selectedCountry,
-                      missingCount > 0 ? `${missingCount} missing` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    meta={recipe.cuisine ?? recipe.country ?? selectedCountry}
                     tint={TINTS[index % TINTS.length]}
                     imageUrl={recipe.imageUrl}
                     recipeId={recipe.id}
                     cuisine={recipe.cuisine ?? recipe.country}
                     favorited={saved}
+                    onHandCount={onHandCount}
+                    missingCount={missingCount}
                     onPress={() => router.push(`/recipe/${recipe.id}`)}
                     onToggleFavorite={() => {
                       void toggleFavorite(recipe);
@@ -199,6 +210,10 @@ export default function RecipesScreen() {
               );
             })}
         </View>
+
+        {!isLoading && isLoadingMore ? (
+          <RecipeGeneratingLoader compact country={selectedCountry} />
+        ) : null}
       </ScreenContainer>
 
       <GlassBackButton onPress={() => smartBack('/')} />
@@ -209,26 +224,63 @@ export default function RecipesScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   topPad: { height: 52 },
-  headerBlock: { gap: 6, marginBottom: 4 },
+  headerBlock: { gap: 8, marginBottom: 4 },
+  kickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(137, 102, 250, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
   kicker: {
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
   },
   title: { fontSize: 30, fontWeight: '800' },
   subtitle: { fontSize: 14, lineHeight: 20 },
-  actions: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 10, 
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: Radii.chip,
+    borderWidth: StyleSheet.hairlineWidth,
+    maxWidth: '100%',
+  },
+  filterChipGrow: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 140,
+  },
+  filterChipText: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
     width: '100%',
-    marginVertical: 12,
+    marginVertical: 14,
   },
   regenerateBtnWrap: {
     flexGrow: 1,
     flexShrink: 1,
-    minWidth: 120,
-    borderRadius: 28,
+    minWidth: 140,
+    borderRadius: Radii.pill,
+    shadowColor: SnapChef.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 12,
@@ -236,7 +288,7 @@ const styles = StyleSheet.create({
   },
   regenerateBtn: {
     minHeight: 52,
-    borderRadius: 28,
+    borderRadius: Radii.pill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -248,81 +300,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  newSearchBtn: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 140,
+    minHeight: 52,
+    borderRadius: Radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  newSearchText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
   btnPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.97 }],
   },
-  scanBannerShadow: {
-    borderRadius: 24,
-    marginVertical: 12,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  scanBanner: {
-    height: 160,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-  },
-  scanBannerImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanBannerGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanBannerContent: {
-    ...StyleSheet.absoluteFillObject,
-    padding: 16,
-    justifyContent: 'flex-end',
-    gap: 6,
-  },
-  scanBadge: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#8966FA',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  scanBadgeText: {
-    color: '#ffffff',
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  scanBannerTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  scanIngredientsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  scanIngChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  scanIngChipText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
   errorBox: { gap: 12 },
   errorText: { color: '#c62828', fontSize: 13 },
-  list: { gap: 16 },
+  list: { gap: 4 },
   gridWide: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   gridItem: { width: '48%', flexGrow: 1 },
 });

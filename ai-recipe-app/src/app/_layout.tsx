@@ -14,7 +14,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform, StatusBar } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/splash-overlay';
+import { BootProvider, useBoot } from '@/context/BootContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
+import { IngredientsProvider } from '@/context/IngredientsContext';
 import { PreferencesProvider } from '@/context/PreferencesContext';
 import { ShoppingListProvider } from '@/context/ShoppingListContext';
 import { Colors, Fonts } from '@/constants/theme';
@@ -46,6 +48,7 @@ function normalizeInternalHref(href: string): string {
  */
 function AuthGate() {
   const { isSignedIn, isLoaded, userId } = useAuth();
+  const { setNavSettled } = useBoot();
   const segments = useSegments();
   const router = useRouter();
   const pathname = usePathname();
@@ -70,7 +73,19 @@ function AuthGate() {
     return () => {
       cancelled = true;
     };
-  }, [segmentKey]);
+  }, []);
+
+  // Refresh flag after leaving onboarding (storage updated by onboarding screen).
+  useEffect(() => {
+    if (isOnboarding) return;
+    let cancelled = false;
+    void getHasSeenOnboarding().then((seen) => {
+      if (!cancelled) setSeenOnboarding(seen);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnboarding]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +103,7 @@ function AuthGate() {
       cancelled = true;
       unsubscribe();
     };
-  }, [userId, segmentKey]);
+  }, [userId]);
 
   const returnTo = useMemo(() => {
     const raw = searchParams.returnTo;
@@ -132,8 +147,39 @@ function AuthGate() {
     return normalizeInternalHref(rawHref);
   }, [pathname, searchParams]);
 
+  const bootReady =
+    isLoaded && seenOnboarding !== null && (!isSignedIn || countrySetupDone !== null);
+
+  const onCorrectSurface = useMemo(() => {
+    if (!bootReady) return false;
+
+    if (isSignedIn) {
+      if (!countrySetupDone) return isSelectCountry;
+      // Signed-in users belong in the app (not onboarding / country pick / oauth).
+      return !isOnboarding && !isSelectCountry && !isOAuthCallback;
+    }
+
+    // Signed out
+    if (isOAuthCallback) return true;
+    if (!seenOnboarding) return isOnboarding || inAuthGroup;
+    return isPublicAuthSurface;
+  }, [
+    bootReady,
+    isSignedIn,
+    countrySetupDone,
+    isSelectCountry,
+    isOnboarding,
+    isOAuthCallback,
+    seenOnboarding,
+    inAuthGroup,
+    isPublicAuthSurface,
+  ]);
+
   useEffect(() => {
-    if (!isLoaded || seenOnboarding === null) return;
+    if (!bootReady) {
+      setNavSettled(false);
+      return;
+    }
 
     const redirect = (target: string) => {
       const now = Date.now();
@@ -151,23 +197,16 @@ function AuthGate() {
     };
 
     if (isSignedIn) {
-      if (countrySetupDone === null) return;
-
       if (!countrySetupDone) {
-        if (!isSelectCountry) {
-          redirect('/select-country');
-        }
+        if (!isSelectCountry) redirect('/select-country');
         return;
       }
-
-      // Country done — leave auth / onboarding / oauth / country pickers for home.
       if (inAuthGroup || isOnboarding || isSelectCountry || isOAuthCallback) {
         redirect(returnTo ?? '/');
       }
       return;
     }
 
-    // Signed out: never bounce oauth-callback mid-handshake.
     if (isOAuthCallback) return;
 
     if (isSelectCountry) {
@@ -179,8 +218,8 @@ function AuthGate() {
       redirect(seenOnboarding ? '/sign-in' : '/onboarding');
     }
   }, [
+    bootReady,
     isSignedIn,
-    isLoaded,
     inAuthGroup,
     isOnboarding,
     isSelectCountry,
@@ -191,43 +230,66 @@ function AuthGate() {
     currentPathWithQuery,
     segmentKey,
     pathname,
-    segments,
     seenOnboarding,
     countrySetupDone,
+    setNavSettled,
   ]);
+
+  // Reveal UI only after the user is on the correct first screen (Play Store–style).
+  useEffect(() => {
+    setNavSettled(onCorrectSurface);
+  }, [onCorrectSurface, setNavSettled]);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        headerTintColor: colors.tint,
-        headerBackTitle: 'Back',
-        headerStyle: { backgroundColor: colors.background },
-        headerShadowVisible: false,
-        headerTitleStyle: {
-          fontFamily: Fonts.display,
-          color: colors.text,
-        },
-        contentStyle: { backgroundColor: colors.background },
-      }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      <Stack.Screen name="select-country" options={{ headerShown: false }} />
-      <Stack.Screen name="oauth-callback" options={{ headerShown: false }} />
-      <Stack.Screen name="recipes" options={{ headerShown: false }} />
-      <Stack.Screen name="recipe/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="preferences" options={{ headerShown: false }} />
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
-      <Stack.Screen name="account" options={{ headerShown: false }} />
-      <Stack.Screen name="legal" options={{ headerShown: false }} />
-      <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerTintColor: colors.tint,
+          headerBackTitle: 'Back',
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerTitleStyle: {
+            fontFamily: Fonts.display,
+            color: colors.text,
+          },
+          contentStyle: { backgroundColor: colors.background },
+          animation: 'fade',
+        }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'none' }} />
+        <Stack.Screen name="select-country" options={{ headerShown: false }} />
+        <Stack.Screen name="oauth-callback" options={{ headerShown: false }} />
+        <Stack.Screen name="recipes" options={{ headerShown: false }} />
+        <Stack.Screen name="recipe/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="preferences" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="account" options={{ headerShown: false }} />
+        <Stack.Screen name="legal" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
+      </Stack>
+      {!onCorrectSurface ? (
+        <View
+          style={bootCover}
+          pointerEvents="auto"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      ) : null}
+    </View>
   );
 }
+
+const bootCover = {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: '#2A1F4A',
+  zIndex: 9998,
+  elevation: 9998,
+} as const;
 
 function RootNavigation() {
   const colorScheme = useColorScheme();
@@ -261,14 +323,18 @@ function RootNavigation() {
   return (
     <ThemeProvider value={navTheme}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <FavoritesProvider>
-        <ShoppingListProvider>
-          <AnimatedSplashOverlay />
-          <ClerkLoaded>
-            <AuthGate />
-          </ClerkLoaded>
-        </ShoppingListProvider>
-      </FavoritesProvider>
+      <BootProvider>
+        <FavoritesProvider>
+          <ShoppingListProvider>
+            <IngredientsProvider>
+              <AnimatedSplashOverlay />
+              <ClerkLoaded>
+                <AuthGate />
+              </ClerkLoaded>
+            </IngredientsProvider>
+          </ShoppingListProvider>
+        </FavoritesProvider>
+      </BootProvider>
     </ThemeProvider>
   );
 }

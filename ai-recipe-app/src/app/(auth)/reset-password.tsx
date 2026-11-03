@@ -1,43 +1,57 @@
 import { useSignIn } from '@clerk/clerk-expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 
 import {
+  AuthOtpInput,
   AuthPrimaryButton,
   AuthScreenShell,
   AuthTextField,
   BRAND_NAME,
   getClerkErrorMessage,
+  requestPasswordResetEmailCode,
 } from '@/features/auth';
+import { useCodeTimers } from '@/features/auth/hooks/useCodeTimers';
 
-const RESEND_COOLDOWN_SEC = 45;
+function readParam(value: string | string[] | undefined): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return '';
+}
 
 export default function ResetPasswordScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const email = typeof params.email === 'string' ? params.email : '';
-  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
+  const email = readParam(params.email).trim().toLowerCase();
+  const returnTo = readParam(params.returnTo) || undefined;
 
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState('');
-  const [cooldown, setCooldown] = useState(0);
+  const [resendHint, setResendHint] = useState('');
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
+  const {
+    isExpired,
+    canResend,
+    expiryLabel,
+    resendLabel,
+    restartAfterResend,
+  } = useCodeTimers();
 
   const onResetPassword = useCallback(async () => {
     if (!isLoaded) return;
-    if (!code.trim()) {
-      setError('Please enter the verification code.');
+    if (isExpired) {
+      setError('This code has expired. Please resend a new one.');
+      return;
+    }
+    if (!code.trim() || code.trim().length < 6) {
+      setError('Please enter the 6-digit verification code.');
       return;
     }
     if (password.length < 8) {
@@ -67,21 +81,24 @@ export default function ResetPasswordScreen() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, signIn, code, password, confirmPassword, setActive]);
+  }, [isLoaded, signIn, code, password, confirmPassword, setActive, isExpired]);
 
   const onResend = useCallback(async () => {
-    if (!isLoaded || !email || cooldown > 0) return;
+    if (!isLoaded || !signIn || !email || !canResend || resendLoading) return;
+    setResendLoading(true);
     setError('');
+    setResendHint('');
     try {
-      await signIn.create({
-        strategy: 'reset_password_email_code',
-        identifier: email,
-      });
-      setCooldown(RESEND_COOLDOWN_SEC);
+      await requestPasswordResetEmailCode(signIn, email);
+      setCode('');
+      restartAfterResend();
+      setResendHint('A new code was sent. Check your inbox.');
     } catch (err: unknown) {
       setError(getClerkErrorMessage(err, 'Failed to resend code.'));
+    } finally {
+      setResendLoading(false);
     }
-  }, [isLoaded, signIn, email, cooldown]);
+  }, [isLoaded, signIn, email, canResend, resendLoading, restartAfterResend]);
 
   const goBackToLogin = () =>
     router.replace({
@@ -90,23 +107,24 @@ export default function ResetPasswordScreen() {
     });
 
   return (
-    <AuthScreenShell compact>
+    <AuthScreenShell compact showBackButton>
       <Text style={styles.title}>Reset Password</Text>
       <Text style={styles.subtitle}>
         {email
           ? `Enter the code sent to ${email} and choose a new ${BRAND_NAME} password.`
           : `Enter the code sent to your email and choose a new ${BRAND_NAME} password.`}
       </Text>
+      <Text style={[styles.expiry, isExpired && styles.expiryExpired]}>
+        {isExpired
+          ? 'Code expired — resend to get a new one.'
+          : `Code expires in ${expiryLabel}`}
+      </Text>
 
       <View style={styles.form}>
-        <AuthTextField
+        <AuthOtpInput
           label="Verification code"
-          placeholder="6-digit code"
           value={code}
           onChangeText={setCode}
-          keyboardType="number-pad"
-          autoCapitalize="none"
-          maxLength={6}
           accessibilityLabel="Verification code"
         />
 
@@ -131,19 +149,32 @@ export default function ResetPasswordScreen() {
           secureTextEntry={!showPassword}
           autoComplete="new-password"
           accessibilityLabel="Confirm new password"
+          showPasswordToggle
+          passwordVisible={showPassword}
+          onTogglePassword={() => setShowPassword((v) => !v)}
         />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        {resendHint ? <Text style={styles.hint}>{resendHint}</Text> : null}
 
-        <AuthPrimaryButton label="Reset Password" onPress={onResetPassword} loading={loading} />
+        <AuthPrimaryButton
+          label="Reset Password"
+          onPress={onResetPassword}
+          loading={loading}
+          disabled={resendLoading || isExpired}
+        />
 
         <TouchableOpacity
           style={styles.link}
           onPress={() => void onResend()}
-          disabled={cooldown > 0 || !email}
+          disabled={!canResend || !email || resendLoading || loading}
           hitSlop={8}>
-          <Text style={[styles.linkText, cooldown > 0 && styles.linkMuted]}>
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't receive a code? Resend"}
+          <Text
+            style={[
+              styles.linkText,
+              (!canResend || resendLoading) && styles.linkMuted,
+            ]}>
+            {resendLoading ? 'Sending…' : resendLabel}
           </Text>
         </TouchableOpacity>
 
@@ -157,9 +188,17 @@ export default function ResetPasswordScreen() {
 
 const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#0A0116', marginBottom: 6 },
-  subtitle: { fontSize: 14, color: '#6B6575', marginBottom: 20, lineHeight: 20 },
+  subtitle: { fontSize: 14, color: '#6B6575', marginBottom: 8, lineHeight: 20 },
+  expiry: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6575',
+    marginBottom: 16,
+  },
+  expiryExpired: { color: '#c62828' },
   form: { gap: 14 },
   error: { color: '#c62828', fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  hint: { color: '#8966FA', fontSize: 13, textAlign: 'center', fontWeight: '600' },
   link: { alignSelf: 'center', paddingVertical: 6 },
   linkText: { fontSize: 14, fontWeight: '600', color: '#8966FA' },
   linkMuted: { color: '#6B6575' },

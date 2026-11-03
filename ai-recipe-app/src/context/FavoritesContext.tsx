@@ -63,7 +63,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
               await writeFavorites(merged);
             }
           } catch (error) {
-            console.error('Favorite sync failed:', error);
+            // Local favorites still work offline — don't hard-fail the session.
+            if (__DEV__) {
+              console.warn(
+                '[favorites] remote sync skipped (API unreachable). Using local favorites.',
+                error instanceof Error ? error.message : error,
+              );
+            }
           }
         }
       } finally {

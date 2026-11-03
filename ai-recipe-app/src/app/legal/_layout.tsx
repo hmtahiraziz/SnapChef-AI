@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
-import { Platform } from 'react-native';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { frostedStackScreenOptions } from '@/components/navigation/frosted-stack-options';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function LegalLayout() {
@@ -9,20 +9,7 @@ export default function LegalLayout() {
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTintColor: colors.tint,
-        headerBackTitle: 'Back',
-        headerStyle: { backgroundColor: colors.background },
-        headerShadowVisible: false,
-        headerTitleStyle: {
-          fontFamily: Fonts.display,
-          color: colors.text,
-        },
-        contentStyle: { backgroundColor: colors.background },
-        animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
-      }}>
+    <Stack screenOptions={frostedStackScreenOptions(colors)}>
       <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
     </Stack>
   );

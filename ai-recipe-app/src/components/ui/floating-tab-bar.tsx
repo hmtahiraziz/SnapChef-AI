@@ -1,272 +1,284 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Pressable,
   StyleSheet,
   Text,
   Platform,
-  Modal,
   useWindowDimensions,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Animated, {
-  useSharedValue,
+  Easing,
+  interpolate,
+  interpolateColor,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
-import { Radii } from '@/constants/theme';
+import { BottomSheetModal } from '@/components/ui/bottom-sheet-modal';
+import { FloatingTabMetrics, Fonts, Radii, SnapChef } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+/** Fixed mobile metrics — keep in sync with `FloatingTabMetrics` / ScreenContainer inset. */
+const PILL_HEIGHT = FloatingTabMetrics.pillHeight;
+const PILL_MAX_WIDTH = 420;
+const PILL_PAD_H = 6;
+const CENTER_SIZE = 56;
+const CENTER_LIFT = -FloatingTabMetrics.centerLift;
+const ICON_SIZE = 22;
+const LABEL_SIZE = 11;
+const HORIZONTAL_INSET = 18;
+const BOTTOM_GAP = FloatingTabMetrics.bottomGap;
+
+const FOCUS_TIMING = {
+  duration: 240,
+  easing: Easing.out(Easing.cubic),
+} as const;
+
+const FOCUS_SPRING = {
+  damping: 20,
+  stiffness: 220,
+  mass: 0.7,
+} as const;
+
+type TabIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
 const ITEMS = [
-  { key: 'home', routeName: 'index', type: 'route', label: 'Home' },
-  { key: 'favorites', routeName: 'favorites', type: 'route', label: 'Favorites' },
-  { key: 'spark', type: 'action', label: 'AI Scan' },
-  { key: 'shopping', routeName: 'shopping', type: 'route', label: 'Shopping' },
-  { key: 'settings', routeName: 'settings', type: 'route', label: 'Settings' },
-] as const;
+  {
+    key: 'home',
+    routeName: 'index',
+    type: 'route' as const,
+    label: 'Home',
+    icon: 'silverware-fork-knife' as TabIconName,
+    iconActive: 'silverware-fork-knife' as TabIconName,
+  },
+  {
+    key: 'recipes',
+    routeName: 'shopping',
+    type: 'route' as const,
+    label: 'Recipes',
+    icon: 'book-outline' as TabIconName,
+    iconActive: 'book-open-page-variant' as TabIconName,
+  },
+  {
+    key: 'spark',
+    type: 'action' as const,
+    label: 'AI Scan',
+  },
+  {
+    key: 'favorites',
+    routeName: 'favorites',
+    type: 'route' as const,
+    label: 'Favorites',
+    icon: 'heart-outline' as TabIconName,
+    iconActive: 'heart' as TabIconName,
+  },
+  {
+    key: 'settings',
+    routeName: 'settings',
+    type: 'route' as const,
+    label: 'Settings',
+    icon: 'cog-outline' as TabIconName,
+    iconActive: 'cog' as TabIconName,
+  },
+];
 
-type TabMetrics = {
-  isCompact: boolean;
-  horizontalPad: number;
-  bottomPad: number;
-  pillMinHeight: number;
-  pillPadH: number;
-  rowPadV: number;
-  iconSize: number;
-  iconHit: number;
-  itemMinHeight: number;
-  centerWrap: number;
-  centerBtn: number;
-  centerIcon: number;
-  centerLift: number;
-  menuPad: number;
-  menuIcon: number;
-  menuGap: number;
-  menuBtnWidth: number;
-  menuTitleSize: number;
-  pillRadius: number;
-  maxWidth: number;
-  /** Space reserved above the home-indicator / tab bar for the scan sheet. */
-  scanSheetBottomInset: number;
-};
+type RouteItem = Extract<(typeof ITEMS)[number], { type: 'route' }>;
 
-function buildTabMetrics(
-  width: number,
-  height: number,
-  safeBottom: number,
-  safeHorizontal: number,
-): TabMetrics {
-  const isCompact = width < 380;
-  const isTiny = width < 340;
-  const isShort = height < 700;
-  const isTablet = width >= 768;
-
-  const bottomPad = Math.max(safeBottom, isCompact ? 8 : 12);
-  const horizontalPad = Math.max(
-    safeHorizontal,
-    isTiny ? 10 : isCompact ? 12 : isTablet ? 24 : 16,
-  );
-
-  const pillMinHeight = isTiny ? 56 : isCompact ? 60 : isShort ? 64 : isTablet ? 72 : 68;
-  const centerWrap = isTiny ? 52 : isCompact ? 56 : isTablet ? 70 : 64;
-  const centerBtn = isTiny ? 44 : isCompact ? 48 : isTablet ? 58 : 54;
-  const centerLift = isTiny ? -8 : isCompact ? -10 : -12;
-  const pillPadH = isTiny ? 4 : isCompact ? 6 : 8;
-  const rowPadV = isCompact ? 4 : 6;
-  const pillRadius = isTiny ? 30 : Radii.nav;
-  const maxWidth = isTablet ? 560 : 500;
-
-  // Pill body + protruding center + gap so sheet sits cleanly above the bar.
-  const scanSheetBottomInset =
-    bottomPad + pillMinHeight + Math.abs(centerLift) + (isCompact ? 10 : 14);
-
-  return {
-    isCompact,
-    horizontalPad,
-    bottomPad,
-    pillMinHeight,
-    pillPadH,
-    rowPadV,
-    iconSize: isTiny ? 20 : isCompact ? 22 : isTablet ? 26 : 24,
-    iconHit: isTiny ? 40 : isCompact ? 44 : 48,
-    itemMinHeight: isTiny ? 44 : isCompact ? 48 : 52,
-    centerWrap,
-    centerBtn,
-    centerIcon: isTiny ? 20 : isCompact ? 21 : isTablet ? 26 : 24,
-    centerLift,
-    menuPad: isCompact ? 18 : 24,
-    menuIcon: isCompact ? 56 : 64,
-    menuGap: isCompact ? 20 : 32,
-    menuBtnWidth: isCompact ? 88 : 100,
-    menuTitleSize: isCompact ? 17 : 19,
-    pillRadius,
-    maxWidth,
-    scanSheetBottomInset,
-  };
-}
+type SlotLayout = { x: number; width: number };
 
 function TabItem({
   item,
   focused,
   badge,
   onPress,
-  metrics,
+  onSlotLayout,
+  inactiveColor,
 }: {
   item: (typeof ITEMS)[number];
   focused: boolean;
   badge?: string | number;
   onPress: () => void;
-  metrics: TabMetrics;
+  onSlotLayout?: (event: LayoutChangeEvent) => void;
+  inactiveColor: string;
 }) {
-  const scale = useSharedValue(1);
-  const theme = useTheme();
+  const progress = useSharedValue(focused ? 1 : 0);
+  const isCenter = item.type === 'action';
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+  useEffect(() => {
+    progress.value = withTiming(focused ? 1 : 0, FOCUS_TIMING);
+  }, [focused, progress]);
+
+  const iconMotionStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(progress.value, [0, 1], [1, 1.06]) },
+      { translateY: interpolate(progress.value, [0, 1], [0, -1]) },
+    ],
   }));
 
-  const isCenter = item.type === 'action';
-  const { isDark } = theme;
+  const inactiveIconStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 1], [1, 0]),
+  }));
 
-  const inactiveIconColor = theme.iconMuted;
-  const activeIconColor = theme.tint;
-  const centerBgColor = isDark ? theme.backgroundElement : '#ffffff';
+  const activeIconStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 1], [0, 1]),
+  }));
+
+  const labelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [inactiveColor, SnapChef.primary]),
+    opacity: interpolate(progress.value, [0, 1], [0.88, 1]),
+    transform: [{ translateY: interpolate(progress.value, [0, 1], [1, 0]) }],
+  }));
+
+  const centerScale = useSharedValue(1);
+  const centerPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: centerScale.value }],
+  }));
+
+  if (isCenter) {
+    return (
+      <Pressable
+        onPressIn={() => {
+          centerScale.value = withTiming(0.94, { duration: 90 });
+        }}
+        onPressOut={() => {
+          centerScale.value = withTiming(1, { duration: 140 });
+        }}
+        onPress={onPress}
+        style={styles.centerWrap}
+        accessibilityRole="button"
+        accessibilityLabel="AI Scan"
+      >
+        <Animated.View style={[styles.centerBtn, centerPulseStyle]}>
+          <Ionicons name="sparkles" size={24} color={SnapChef.white} />
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  const routeItem = item as RouteItem;
 
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={() => {
-        scale.value = withSpring(0.88, { damping: 10, stiffness: 200 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1.0, { damping: 10, stiffness: 200 });
-      }}
-      onHoverIn={() => {
-        if (Platform.OS === 'web') {
-          scale.value = withSpring(1.15, { damping: 8, stiffness: 180 });
-        }
-      }}
-      onHoverOut={() => {
-        if (Platform.OS === 'web') {
-          scale.value = withSpring(1.0, { damping: 8, stiffness: 180 });
-        }
-      }}
-      style={
-        isCenter
-          ? [
-              styles.centerBtnWrap,
-              {
-                width: metrics.centerWrap,
-                height: metrics.centerWrap,
-                top: metrics.centerLift,
-              },
-            ]
-          : [styles.itemWrap, { minHeight: metrics.itemMinHeight }]
-      }
+      onLayout={onSlotLayout}
+      style={styles.itemWrap}
       accessibilityRole="button"
       accessibilityState={focused ? { selected: true } : {}}
-      accessibilityLabel={item.label}
+      accessibilityLabel={routeItem.label}
     >
-      <Animated.View
-        style={[
-          isCenter
-            ? [
-                styles.centerBtn,
-                {
-                  width: metrics.centerBtn,
-                  height: metrics.centerBtn,
-                  borderRadius: metrics.centerBtn / 2,
-                  backgroundColor: centerBgColor,
-                  borderColor: theme.border,
-                },
-              ]
-            : [
-                styles.iconContainer,
-                { width: metrics.iconHit, height: metrics.iconHit },
-              ],
-          animatedStyle,
-        ]}
-      >
-        {isCenter ? (
-          <Ionicons name="sparkles" size={metrics.centerIcon} color={theme.tint} />
-        ) : (
-          <View style={styles.normalIconWrap}>
-            {item.key === 'home' && (
-              <MaterialCommunityIcons
-                name="chef-hat"
-                size={metrics.iconSize}
-                color={focused ? activeIconColor : inactiveIconColor}
-              />
-            )}
-            {item.key === 'favorites' && (
-              <MaterialCommunityIcons
-                name={focused ? 'book-open' : 'book-open-outline'}
-                size={metrics.iconSize}
-                color={focused ? activeIconColor : inactiveIconColor}
-              />
-            )}
-            {item.key === 'shopping' && (
-              <MaterialCommunityIcons
-                name={focused ? 'clipboard-text' : 'clipboard-text-outline'}
-                size={metrics.iconSize}
-                color={focused ? activeIconColor : inactiveIconColor}
-              />
-            )}
-            {item.key === 'settings' && (
-              <MaterialCommunityIcons
-                name={focused ? 'cog' : 'cog-outline'}
-                size={metrics.iconSize}
-                color={focused ? activeIconColor : inactiveIconColor}
-              />
-            )}
-
-            {badge != null ? (
-              <View style={[styles.badge, { borderColor: centerBgColor }]}>
-                <Text style={styles.badgeText}>
-                  {typeof badge === 'number' && badge > 99 ? '99+' : String(badge)}
-                </Text>
-              </View>
-            ) : null}
-
-            {focused ? (
-              <View style={[styles.activeDot, { backgroundColor: theme.tint }]} />
-            ) : null}
-          </View>
-        )}
-      </Animated.View>
+      <View style={styles.itemInner}>
+        <Animated.View style={[styles.iconSlot, iconMotionStyle]}>
+          <Animated.View style={[styles.iconLayer, inactiveIconStyle]}>
+            <MaterialCommunityIcons
+              name={routeItem.icon}
+              size={ICON_SIZE}
+              color={inactiveColor}
+            />
+          </Animated.View>
+          <Animated.View style={[styles.iconLayer, activeIconStyle]}>
+            <MaterialCommunityIcons
+              name={routeItem.iconActive}
+              size={ICON_SIZE}
+              color={SnapChef.primary}
+            />
+          </Animated.View>
+          {badge != null ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {typeof badge === 'number' && badge > 99 ? '99+' : String(badge)}
+              </Text>
+            </View>
+          ) : null}
+        </Animated.View>
+        <Animated.Text style={[styles.label, labelStyle]} numberOfLines={1}>
+          {routeItem.label}
+        </Animated.Text>
+      </View>
     </Pressable>
   );
 }
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const [showScanMenu, setShowScanMenu] = useState(false);
   const theme = useTheme();
   const { isDark } = theme;
 
-  const metrics = useMemo(
-    () =>
-      buildTabMetrics(
-        width,
-        height,
-        insets.bottom,
-        Math.max(insets.left, insets.right),
-      ),
-    [width, height, insets.bottom, insets.left, insets.right],
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'android' ? 12 : 8) + BOTTOM_GAP;
+  const horizontalPad = Math.max(HORIZONTAL_INSET, Math.max(insets.left, insets.right));
+  const scanSheetBottomInset = bottomPad + PILL_HEIGHT + Math.abs(CENTER_LIFT) + 12;
+
+  const pillBg = isDark ? theme.backgroundElement : SnapChef.white;
+  const pillBorder = isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.95)';
+  const inactiveColor = isDark ? theme.iconMuted : 'rgba(10, 1, 22, 0.72)';
+  const indicatorTint = isDark ? 'rgba(180, 155, 255, 0.18)' : 'rgba(137, 102, 250, 0.12)';
+
+  const isCompact = width < 360;
+
+  const menuMetrics = useMemo(
+    () => ({
+      pad: isCompact ? 22 : 28,
+      icon: isCompact ? 72 : 80,
+      gap: isCompact ? 28 : 40,
+      btnWidth: isCompact ? 120 : 132,
+      titleSize: isCompact ? 22 : 24,
+      iconGlyph: isCompact ? 30 : 34,
+    }),
+    [isCompact],
   );
 
-  const tabColors = isDark
-    ? (['rgba(22, 22, 30, 0.96)', 'rgba(14, 14, 20, 0.94)'] as const)
-    : (['rgba(255, 255, 255, 0.92)', 'rgba(247, 243, 255, 0.88)'] as const);
+  const slotLayouts = useRef<Record<string, SlotLayout>>({});
+  const indicatorX = useSharedValue(0);
+  const indicatorW = useSharedValue(56);
+  const indicatorOpacity = useSharedValue(0);
+  const hasPlacedIndicator = useRef(false);
 
-  const tabBorderColor = isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.65)';
+  const activeRouteName = state.routes[state.index]?.name;
+  const activeItemKey = ITEMS.find(
+    (item) => item.type === 'route' && item.routeName === activeRouteName,
+  )?.key;
+
+  const moveIndicatorTo = (key: string) => {
+    const layout = slotLayouts.current[key];
+    if (!layout) return;
+
+    const targetW = Math.min(64, Math.max(48, layout.width - 8));
+    const targetX = layout.x + (layout.width - targetW) / 2;
+
+    if (!hasPlacedIndicator.current) {
+      indicatorX.value = targetX;
+      indicatorW.value = targetW;
+      indicatorOpacity.value = withTiming(1, { duration: 180 });
+      hasPlacedIndicator.current = true;
+      return;
+    }
+
+    indicatorX.value = withSpring(targetX, FOCUS_SPRING);
+    indicatorW.value = withSpring(targetW, FOCUS_SPRING);
+    indicatorOpacity.value = withTiming(1, FOCUS_TIMING);
+  };
+
+  useEffect(() => {
+    if (activeItemKey) {
+      moveIndicatorTo(activeItemKey);
+    }
+  }, [activeItemKey]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: indicatorOpacity.value,
+    width: indicatorW.value,
+    transform: [{ translateX: indicatorX.value }],
+  }));
 
   return (
     <View
@@ -274,131 +286,166 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
       style={[
         styles.wrap,
         {
-          paddingBottom: metrics.bottomPad,
-          paddingHorizontal: metrics.horizontalPad,
+          paddingBottom: bottomPad,
+          paddingHorizontal: horizontalPad,
         },
       ]}
     >
-      <Modal
+      <BottomSheetModal
         visible={showScanMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowScanMenu(false)}
-      >
-        <Pressable
-          style={[styles.modalOverlay, { paddingBottom: metrics.scanSheetBottomInset }]}
-          onPress={() => setShowScanMenu(false)}
-        >
+        onClose={() => setShowScanMenu(false)}
+        clearFloatingTabBar={false}
+        overlayColor={isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(10, 1, 22, 0.45)'}
+        sheetStyle={[
+          styles.menuCard,
+          {
+            backgroundColor: isDark ? theme.backgroundElement : '#FFFFFF',
+            borderColor: isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.9)',
+            paddingHorizontal: menuMetrics.pad,
+            paddingTop: 12,
+            paddingBottom: menuMetrics.pad,
+            marginBottom: scanSheetBottomInset,
+            alignSelf: 'center',
+            width: isCompact ? '92%' : '88%',
+          },
+        ]}>
+        <View style={[styles.dragIndicator, { backgroundColor: isDark ? theme.border : '#D9D4E3' }]} />
+
+        <View
+          style={[
+            styles.visionBadge,
+            {
+              backgroundColor: isDark ? 'rgba(137, 102, 250, 0.22)' : 'rgba(137, 102, 250, 0.12)',
+            },
+          ]}>
+          <Ionicons name="sparkles" size={12} color={SnapChef.primary} />
+          <Text style={[styles.visionBadgeText, { color: SnapChef.primary }]}>
+            SMART PANTRY VISION
+          </Text>
+        </View>
+
+        <Text style={[styles.menuTitle, { color: theme.text, fontSize: menuMetrics.titleSize }]}>
+          Analyze Ingredients
+        </Text>
+        <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
+          Choose photo source to scan ingredients with AI
+        </Text>
+
+        <View style={[styles.menuRow, { gap: menuMetrics.gap }]}>
           <Pressable
             onPress={() => {
-              /* Absorb presses so the overlay dismiss handler does not fire. */
+              setShowScanMenu(false);
+              router.push({
+                pathname: '/(tabs)',
+                params: { openCamera: 'true', time: Date.now().toString() },
+              });
             }}
-            style={[
-              styles.menuCard,
-              {
-                backgroundColor: isDark ? theme.backgroundElement : 'rgba(255, 255, 255, 0.98)',
-                borderColor: isDark ? theme.cardBorder : 'rgba(255, 255, 255, 0.85)',
-                padding: metrics.menuPad,
-                width: metrics.isCompact ? '94%' : '90%',
-              },
-            ]}
-          >
-            <View style={[styles.dragIndicator, { backgroundColor: theme.border }]} />
-            <Text style={[styles.menuTitle, { color: theme.text, fontSize: metrics.menuTitleSize }]}>
-              Analyze Ingredients
-            </Text>
-            <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]}>
-              Choose photo source to scan ingredients with AI
-            </Text>
-
-            <View style={[styles.menuRow, { gap: metrics.menuGap }]}>
-              <Pressable
-                onPress={() => {
-                  setShowScanMenu(false);
-                  router.push({
-                    pathname: '/(tabs)',
-                    params: { openCamera: 'true', time: Date.now().toString() },
-                  });
-                }}
-                style={({ pressed }) => [
-                  styles.menuBtn,
-                  { width: metrics.menuBtnWidth },
-                  pressed && styles.menuBtnPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.menuIconCircle,
-                    {
-                      backgroundColor: '#8966FA',
-                      width: metrics.menuIcon,
-                      height: metrics.menuIcon,
-                      borderRadius: metrics.menuIcon / 2,
-                    },
-                  ]}
-                >
-                  <Ionicons name="camera" size={metrics.isCompact ? 22 : 26} color="#fff" />
-                </View>
-                <Text style={[styles.menuBtnText, { color: theme.text }]}>Take Photo</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  setShowScanMenu(false);
-                  router.push({
-                    pathname: '/(tabs)',
-                    params: { openGallery: 'true', time: Date.now().toString() },
-                  });
-                }}
-                style={({ pressed }) => [
-                  styles.menuBtn,
-                  { width: metrics.menuBtnWidth },
-                  pressed && styles.menuBtnPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.menuIconCircle,
-                    {
-                      backgroundColor: '#34D399',
-                      width: metrics.menuIcon,
-                      height: metrics.menuIcon,
-                      borderRadius: metrics.menuIcon / 2,
-                    },
-                  ]}
-                >
-                  <Ionicons name="image" size={metrics.isCompact ? 22 : 26} color="#fff" />
-                </View>
-                <Text style={[styles.menuBtnText, { color: theme.text }]}>Upload Photo</Text>
-              </Pressable>
+            accessibilityRole="button"
+            accessibilityLabel="Take photo with camera"
+            style={({ pressed }) => [
+              styles.menuBtn,
+              { width: menuMetrics.btnWidth },
+              pressed && styles.menuBtnPressed,
+            ]}>
+            <View
+              style={[
+                styles.menuIconCircle,
+                {
+                  backgroundColor: SnapChef.primary,
+                  width: menuMetrics.icon,
+                  height: menuMetrics.icon,
+                  borderRadius: menuMetrics.icon / 2,
+                  shadowColor: SnapChef.primary,
+                },
+              ]}>
+              <Ionicons name="camera" size={menuMetrics.iconGlyph} color={SnapChef.white} />
             </View>
-
-            <Pressable
-              style={[styles.menuCloseBtn, { borderTopColor: theme.border }]}
-              onPress={() => setShowScanMenu(false)}
-            >
-              <Text style={[styles.menuCloseText, { color: theme.tint }]}>Cancel</Text>
-            </Pressable>
+            <Text style={[styles.menuBtnText, { color: theme.text }]}>Take Photo</Text>
+            <Text style={[styles.menuBtnSubtext, { color: theme.textSecondary }]}>Camera lens</Text>
           </Pressable>
-        </Pressable>
-      </Modal>
 
-      <View style={[styles.pillShadow, { maxWidth: metrics.maxWidth, borderRadius: metrics.pillRadius }]}>
-        <LinearGradient
-          colors={tabColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+          <Pressable
+            onPress={() => {
+              setShowScanMenu(false);
+              router.push({
+                pathname: '/(tabs)',
+                params: { openGallery: 'true', time: Date.now().toString() },
+              });
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Upload photo from gallery"
+            style={({ pressed }) => [
+              styles.menuBtn,
+              { width: menuMetrics.btnWidth },
+              pressed && styles.menuBtnPressed,
+            ]}>
+            <View
+              style={[
+                styles.menuIconCircle,
+                {
+                  backgroundColor: '#1F8A5B',
+                  width: menuMetrics.icon,
+                  height: menuMetrics.icon,
+                  borderRadius: menuMetrics.icon / 2,
+                  shadowColor: '#1F8A5B',
+                },
+              ]}>
+              <Ionicons name="images" size={menuMetrics.iconGlyph} color={SnapChef.white} />
+            </View>
+            <Text style={[styles.menuBtnText, { color: theme.text }]}>Upload Photo</Text>
+            <Text style={[styles.menuBtnSubtext, { color: theme.textSecondary }]}>Device gallery</Text>
+          </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.tipCard,
+            {
+              backgroundColor: isDark ? 'rgba(137, 102, 250, 0.16)' : '#F3EEFF',
+            },
+          ]}>
+          <View
+            style={[
+              styles.tipIconWrap,
+              { backgroundColor: isDark ? 'rgba(137, 102, 250, 0.28)' : 'rgba(137, 102, 250, 0.18)' },
+            ]}>
+            <Ionicons name="bulb" size={16} color={SnapChef.primary} />
+          </View>
+          <Text style={[styles.tipText, { color: theme.textSecondary }]}>
+            Tip: Spread spices and open fridge crisper drawers for 99% recognition accuracy.
+          </Text>
+        </View>
+
+        <Pressable
+          style={styles.menuCloseBtn}
+          onPress={() => setShowScanMenu(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel">
+          <Text style={[styles.menuCloseText, { color: SnapChef.primary }]}>Cancel</Text>
+        </Pressable>
+      </BottomSheetModal>
+
+      <View style={styles.pillShadow}>
+        <View
           style={[
             styles.pill,
             {
-              borderColor: tabBorderColor,
-              minHeight: metrics.pillMinHeight,
-              paddingHorizontal: metrics.pillPadH,
-              borderRadius: metrics.pillRadius,
+              backgroundColor: pillBg,
+              borderColor: pillBorder,
+              height: PILL_HEIGHT,
             },
           ]}
         >
-          <View style={[styles.row, { paddingVertical: metrics.rowPadV }]}>
+          <View style={styles.row}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.activeIndicator,
+                { backgroundColor: indicatorTint },
+                indicatorStyle,
+              ]}
+            />
+
             {ITEMS.map((item) => {
               if (item.type === 'action') {
                 return (
@@ -406,8 +453,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                     key={item.key}
                     item={item}
                     focused={false}
+                    inactiveColor={inactiveColor}
                     onPress={() => setShowScanMenu(true)}
-                    metrics={metrics}
                   />
                 );
               }
@@ -420,7 +467,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                 return null;
               }
 
-              const focused = state.routes[state.index].name === item.routeName;
+              const focused = activeRouteName === item.routeName;
               const badge = options.tabBarBadge;
 
               const handlePress = () => {
@@ -440,13 +487,20 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                   item={item}
                   focused={focused}
                   badge={badge}
+                  inactiveColor={inactiveColor}
                   onPress={handlePress}
-                  metrics={metrics}
+                  onSlotLayout={(event) => {
+                    const { x, width: slotWidth } = event.nativeEvent.layout;
+                    slotLayouts.current[item.key] = { x, width: slotWidth };
+                    if (item.key === activeItemKey) {
+                      moveIndicatorTo(item.key);
+                    }
+                  }}
                 />
               );
             })}
           </View>
-        </LinearGradient>
+        </View>
       </View>
     </View>
   );
@@ -463,147 +517,215 @@ const styles = StyleSheet.create({
   },
   pillShadow: {
     width: '100%',
-    shadowColor: '#8966FA',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
+    maxWidth: PILL_MAX_WIDTH,
+    borderRadius: Radii.nav,
+    shadowColor: SnapChef.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 12,
     backgroundColor: 'transparent',
   },
   pill: {
+    width: '100%',
+    borderRadius: Radii.nav,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'visible',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    paddingHorizontal: PILL_PAD_H,
   },
   row: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    position: 'relative',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 8,
+    bottom: 8,
+    borderRadius: 12,
+    zIndex: 0,
   },
   itemWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: PILL_HEIGHT - 8,
+    zIndex: 1,
   },
-  centerBtnWrap: {
+  itemInner: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 3,
+  },
+  iconSlot: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: LABEL_SIZE,
+    fontFamily: Fonts.bodyMedium,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  centerWrap: {
+    width: CENTER_SIZE + 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: CENTER_LIFT,
     zIndex: 10,
   },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  normalIconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    height: '100%',
-  },
   centerBtn: {
-    backgroundColor: '#ffffff',
+    width: CENTER_SIZE,
+    height: CENTER_SIZE,
+    borderRadius: CENTER_SIZE / 2,
+    backgroundColor: SnapChef.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  activeDot: {
-    position: 'absolute',
-    bottom: -4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    shadowColor: SnapChef.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.38,
+    shadowRadius: 14,
+    elevation: 10,
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: 2,
+    top: -5,
+    right: -10,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#ff4d4f',
+    backgroundColor: '#FF3B30',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
+    borderColor: SnapChef.white,
   },
   badgeText: {
-    color: '#fff',
+    color: SnapChef.white,
     fontSize: 9,
     fontWeight: '700',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(10, 1, 22, 0.48)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
   menuCard: {
-    maxWidth: 380,
-    borderRadius: Radii.card,
+    maxWidth: 400,
+    borderRadius: 28,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 16,
-    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    elevation: 18,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   dragIndicator: {
-    width: 36,
+    width: 40,
     height: 4,
     borderRadius: 2,
-    marginBottom: 16,
+    marginBottom: 18,
+  },
+  visionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 14,
+  },
+  visionBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   menuTitle: {
     fontWeight: '800',
-    marginBottom: 6,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   menuSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 24,
+    lineHeight: 20,
+    marginBottom: 28,
+    paddingHorizontal: 8,
   },
   menuRow: {
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 22,
   },
   menuBtn: {
     alignItems: 'center',
   },
   menuBtnPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.95 }],
+    opacity: 0.86,
+    transform: [{ scale: 0.96 }],
   },
   menuIconCircle: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
   },
   menuBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  menuBtnSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  tipCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  tipIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  tipText: {
+    flex: 1,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '500',
+    lineHeight: 18,
   },
   menuCloseBtn: {
     width: '100%',
     paddingVertical: 14,
-    borderTopWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuCloseText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
 });

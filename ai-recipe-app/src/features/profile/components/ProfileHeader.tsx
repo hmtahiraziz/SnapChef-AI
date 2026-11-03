@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 
-import { SnapChef, Spacing } from '@/constants/theme';
+import { Fonts, Radii, SnapChef, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type ProfileHeaderProps = {
@@ -11,8 +10,6 @@ type ProfileHeaderProps = {
   email: string;
   imageUrl?: string | null;
   greeting?: string;
-  onPressAvatar?: () => void;
-  uploading?: boolean;
 };
 
 export function ProfileHeader({
@@ -20,95 +17,105 @@ export function ProfileHeader({
   email,
   imageUrl,
   greeting = 'Hello',
-  onPressAvatar,
-  uploading = false,
 }: ProfileHeaderProps) {
   const theme = useTheme();
   const { isDark } = theme;
 
-  const colors = isDark
-    ? (['rgba(36,36,48,0.94)', 'rgba(22,22,30,0.96)'] as const)
-    : (['rgba(216,207,255,0.9)', 'rgba(255,255,255,0.92)'] as const);
-
   return (
-    <LinearGradient
-      colors={colors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={[
         styles.card,
         {
-          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
+          backgroundColor: isDark ? theme.backgroundElement : SnapChef.white,
+          borderColor: isDark ? 'rgba(255,255,255,0.08)' : SnapChef.fieldBorder,
+          shadowColor: isDark ? '#000' : SnapChef.primary,
         },
-      ]}
-    >
+      ]}>
       <View style={styles.row}>
-        <Pressable
-          onPress={onPressAvatar}
-          disabled={!onPressAvatar || uploading}
-          accessibilityRole="button"
-          accessibilityLabel="Change profile photo"
-          style={styles.avatarWrap}>
+        <View
+          style={[
+            styles.avatarWrap,
+            { backgroundColor: isDark ? theme.field : '#F3EEFF' },
+          ]}>
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.avatar} contentFit="cover" />
           ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: isDark ? theme.background : 'rgba(255,255,255,0.85)' }]}>
-              <Ionicons name="person" size={28} color={theme.textSecondary} />
-            </View>
+            <Ionicons name="person" size={28} color={theme.textSecondary} />
           )}
-          <View style={[styles.cameraBadge, { borderColor: isDark ? theme.backgroundElement : '#fff' }]}>
-            {uploading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="camera" size={12} color="#fff" />
-            )}
-          </View>
-        </Pressable>
+        </View>
+
         <View style={styles.copy}>
-          <Text style={[styles.greeting, { color: theme.textSecondary }]}>{greeting}</Text>
-          <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+          <Text style={[styles.greeting, { color: theme.textSecondary, fontFamily: Fonts.bodyMedium }]}>
+            {greeting.toUpperCase()}
+          </Text>
+          <Text
+            style={[styles.name, { color: theme.text, fontFamily: Fonts.bodyBold }]}
+            numberOfLines={1}
+            ellipsizeMode="tail">
             {displayName}
           </Text>
-          <Text style={[styles.email, { color: theme.textSecondary }]} numberOfLines={1}>
+          <Text
+            style={[styles.email, { color: theme.textSecondary, fontFamily: Fonts.body }]}
+            numberOfLines={1}
+            ellipsizeMode="tail">
             {email}
           </Text>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 28,
-    borderWidth: 1.5,
+    width: '100%',
+    borderRadius: Radii.card,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.four,
-    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatarWrap: { position: 'relative' },
-  avatar: { width: 72, height: 72, borderRadius: 36 },
-  avatarFallback: {
+  row: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarWrap: {
     width: 72,
     height: 72,
     borderRadius: 36,
+    marginRight: Spacing.three,
+    flexShrink: 0,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cameraBadge: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: SnapChef.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+  avatar: {
+    width: 72,
+    height: 72,
   },
-  copy: { flex: 1, gap: 2 },
-  greeting: { fontSize: 13, fontWeight: '500' },
-  name: { fontSize: 22, fontWeight: '800' },
-  email: { fontSize: 13 },
+  copy: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  greeting: {
+    fontSize: 11,
+    letterSpacing: 1,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 26,
+  },
+  email: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
 });

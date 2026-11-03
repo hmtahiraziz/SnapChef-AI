@@ -46,12 +46,12 @@ const styles = StyleSheet.create({
   },
   frameLight: {
     backgroundColor: 'rgba(137, 102, 250, 0.12)',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(137, 102, 250, 0.22)',
   },
   frameDark: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(216, 207, 255, 0.55)',
     shadowColor: '#D8CFFF',
     shadowOffset: { width: 0, height: 0 },

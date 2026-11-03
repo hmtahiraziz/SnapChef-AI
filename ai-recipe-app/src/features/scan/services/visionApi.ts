@@ -44,21 +44,47 @@ function normalizeExtracted(
     .map((name) => ({ name }));
 }
 
+export type ExtractImageInput = {
+  uri: string;
+  mimeType?: string;
+  fileName?: string;
+  signal?: AbortSignal;
+};
+
+/**
+ * Upload a kitchen photo (multipart) and return detected ingredients.
+ * Requires a signed-in Clerk session (Authorization bearer token).
+ */
 export async function extractIngredientsFromImage(
-  base64: string,
+  input: ExtractImageInput,
 ): Promise<Omit<ExtractedIngredient, 'selected'>[]> {
   if (!hasApiBaseUrl()) {
     throw new ApiKeyMissingError();
   }
 
-  if (!base64) {
+  if (!input.uri) {
     throw new VisionError('No image data provided.');
   }
+
+  const mimeType = input.mimeType || 'image/jpeg';
+  const fileName = input.fileName || `scan-${Date.now()}.jpg`;
+
+  const formData = new FormData();
+  formData.append(
+    'file',
+    {
+      uri: input.uri,
+      name: fileName,
+      type: mimeType,
+    } as unknown as Blob,
+  );
 
   try {
     const response = await backendFetch<VisionExtractResponse>('/api/v1/vision/extract', {
       method: 'POST',
-      body: JSON.stringify({ image_base64: base64 }),
+      body: formData,
+      multipart: true,
+      signal: input.signal,
     });
 
     const items = normalizeExtracted(response);
@@ -75,6 +101,13 @@ export async function extractIngredientsFromImage(
       throw error;
     }
     if (error instanceof Error) {
+      if (
+        error.name === 'AbortError' ||
+        error.message === 'Scan cancelled.' ||
+        error.message === 'Request cancelled.'
+      ) {
+        throw new VisionError('Scan cancelled.');
+      }
       throw new VisionError(error.message || 'Failed to extract ingredients.');
     }
     throw new VisionError('Failed to extract ingredients.');

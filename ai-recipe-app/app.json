@@ -26,7 +26,17 @@
         "monochromeImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.technology726.airecipeapp"
+    },
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
     },
     "web": {
       "output": "static",
@@ -38,7 +48,24 @@
         "expo-image-picker",
         {
           "cameraPermission": "Snap photos of ingredients to find recipes.",
-          "photosPermission": "Choose ingredient photos from your library."
+          "photosPermission": "Choose ingredient photos from your library.",
+          "microphonePermission": false,
+          "colors": {
+            "cropToolbarColor": "#8966FA",
+            "cropToolbarIconColor": "#FFFFFF",
+            "cropToolbarActionTextColor": "#FFFFFF",
+            "cropBackButtonIconColor": "#FFFFFF",
+            "cropBackgroundColor": "#0A0116"
+          },
+          "dark": {
+            "colors": {
+              "cropToolbarColor": "#8966FA",
+              "cropToolbarIconColor": "#FFFFFF",
+              "cropToolbarActionTextColor": "#FFFFFF",
+              "cropBackButtonIconColor": "#FFFFFF",
+              "cropBackgroundColor": "#0A0116"
+            }
+          }
         }
       ],
       [
